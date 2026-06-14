@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admina – Platforma Wydarzen Studenckich</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <div class="nav-links">
+      <a href="#" onclick="showTab('users')" id="tab-users-link">👥 Uzytkownicy</a>
+      <a href="#" onclick="showTab('events')" id="tab-events-link">📅 Wydarzenia</a>
+      <a href="#" onclick="logout()">Wyloguj</a>
+    </div>
+  </nav>
+
+  <div class="container wide">
+    <!-- Users tab -->
+    <div id="tab-users" class="card">
+      <h1>Panel Administratora – Uzytkownicy</h1>
+      <div id="alert-users" class="alert hidden"></div>
+      <div id="users-body" class="loading">Ladowanie...</div>
+    </div>
+
+    <!-- Events tab -->
+    <div id="tab-events" class="card hidden" style="margin-top:20px">
+      <h1>Panel Administratora – Wszystkie wydarzenia</h1>
+      <div id="events-body" class="loading">Ladowanie...</div>
+    </div>
+  </div>
+
+  <script>
+    async function init() {
+      const res = await fetch('/api/me');
+      if (!res.ok) { window.location = '/'; return; }
+      const { user } = await res.json();
+      if (user.rola !== 'Admin') { window.location = '/'; return; }
+      loadUsers();
+    }
+
+    function showTab(tab) {
+      document.getElementById('tab-users').classList.toggle('hidden', tab !== 'users');
+      document.getElementById('tab-events').classList.toggle('hidden', tab !== 'events');
+      if (tab === 'events') loadAllEvents();
+    }
+
+    async function loadUsers() {
+      const res   = await fetch('/api/admin/users');
+      const users = await res.json();
+      const el    = document.getElementById('users-body');
+
+      const roleColor = r => r === 'Admin' ? 'badge-orange' : r === 'Organizator' ? 'badge-blue' : 'badge-gray';
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Punkty</th><th>Akcja</th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+            <tr>
+              <td><strong>${u.imie_nazwisko}</strong></td>
+              <td>${u.email}</td>
+              <td><span class="badge ${roleColor(u.rola)}">${u.rola}</span></td>
+              <td><span class="badge ${u.active ? 'badge-green' : 'badge-gray'}">${u.active ? 'Aktywny' : 'Zablokowany'}</span></td>
+              <td>${u.suma_punktow}</td>
+              <td>
+                <button class="btn btn-warning btn-sm" style="width:88px" onclick="toggleUser(${u.id})">
+                  ${u.active ? 'Zablokuj' : 'Odblokuj'}
+                </button>
+                <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="deleteUser(${u.id}, '${u.email}')">Usun</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function loadAllEvents() {
+      const res    = await fetch('/api/admin/events');
+      const events = await res.json();
+      document.getElementById('events-body').innerHTML = `
+        <table>
+          <thead><tr><th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Limit</th><th>Zapisanych</th><th>Organizator</th></tr></thead>
+          <tbody>
+            ${events.map(e => `
+            <tr>
+              <td><strong>${e.nazwa_wydarzenia}</strong></td>
+              <td>${e.data_wydarzenia}</td>
+              <td>${e.miejsce}</td>
+              <td>${e.limit_miejsc}</td>
+              <td>${e.zapisani}</td>
+              <td>${e.organizator_nazwa}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function toggleUser(id) {
+      const res = await fetch(`/api/admin/users/${id}/toggle`, { method: 'POST' });
+      const d = await res.json();
+      if (res.ok) { showAlert('Status uzytkownika zmieniony.', 'success'); loadUsers(); }
+      else showAlert(d.error, 'error');
+    }
+
+    async function deleteUser(id, email) {
+      if (!confirm(`Usunac uzytkownika ${email}? Tej operacji nie mozna cofnac.`)) return;
+      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      const d = await res.json();
+      if (res.ok) { showAlert('Konto usuniete.', 'success'); loadUsers(); }
+      else showAlert(d.error, 'error');
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location = '/';
+    }
+
+    function showAlert(msg, type) {
+      const el = document.getElementById('alert-users');
+      el.textContent = msg;
+      el.className = `alert alert-${type}`;
+      setTimeout(() => el.className = 'alert hidden', 4000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

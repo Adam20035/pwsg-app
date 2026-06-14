@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logowanie – Platforma Wydarzen Studenckich</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav><span class="brand">🎓 Platforma Wydarzen Studenckich</span></nav>
+
+  <div class="container">
+    <div class="card">
+      <h1>Logowanie</h1>
+      <div id="alert-error" class="alert alert-error hidden"></div>
+
+      <div class="form-group">
+        <label>Login / E-mail</label>
+        <input type="email" id="email" placeholder="email@example.pl">
+      </div>
+      <div class="form-group">
+        <label>Haslo</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="login()">Zaloguj sie</button>
+      </div>
+
+      <div class="link-row" style="margin-top:28px; background:#f7fafc; border-radius:8px; padding:14px; text-align:left; font-size:0.82rem; color:#4a5568;">
+        <strong>Konta testowe:</strong><br><br>
+        <strong>Studenci</strong> (haslo: <code>student123</code>):<br>
+        <code>jan.kowalski@student.pl</code><br>
+        <code>anna.nowak@student.pl</code><br>
+        <code>piotr.wisniewski@student.pl</code><br>
+        <code>marek.zielinski@student.pl</code><br>
+        <code>student@pwsg.pl</code><br>
+        <code>katarzyna.lewandowska@student.pl</code><br>
+        <code>tomasz.dabrowsk@student.pl</code><br><br>
+        <strong>Organizator:</strong> <code>organizator@pwsg.pl</code> / <code>org123</code><br>
+        <strong>Admin:</strong> <code>admin@pwsg.pl</code> / <code>admin123</code>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function login() {
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl    = document.getElementById('alert-error');
+      errEl.classList.add('hidden');
+
+      if (!email || !password) {
+        errEl.textContent = 'Podaj email i haslo.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Blad logowania.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        const role = data.user.rola;
+        if (role === 'Admin')       window.location = '/admin.html';
+        else if (role === 'Organizator') window.location = '/organizer.html';
+        else                        window.location = '/events.html';
+      } catch (e) {
+        errEl.textContent = 'Blad polaczenia z serwerem.';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+    // Redirect if already logged in
+    fetch('/api/me').then(r => {
+      if (r.ok) return r.json();
+    }).then(data => {
+      if (!data) return;
+      const role = data.user.rola;
+      if (role === 'Admin') window.location = '/admin.html';
+      else if (role === 'Organizator') window.location = '/organizer.html';
+      else window.location = '/events.html';
+    }).catch(() => {});
+  </script>
+</body>
+</html>

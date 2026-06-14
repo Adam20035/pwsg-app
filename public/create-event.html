@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nowe wydarzenie – Platforma Wydarzen Studenckich</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <div class="nav-links">
+      <a href="organizer.html">Moje wydarzenia</a>
+      <a href="#" onclick="logout()">Wyloguj</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h1>Kreator nowego wydarzenia</h1>
+
+      <div id="alert-success" class="alert alert-success hidden">
+        Wydarzenie zostalo utworzone! <a href="organizer.html">Zobacz liste</a>
+      </div>
+      <div id="alert-error" class="alert alert-error hidden"></div>
+
+      <div class="form-group">
+        <label>Nazwa wydarzenia</label>
+        <input type="text" id="nazwa" placeholder="Wpisz nazwe...">
+      </div>
+      <div class="form-group">
+        <label>Typ wydarzenia</label>
+        <select id="typ">
+          <option value="Laboratoria">Laboratoria</option>
+          <option value="Warsztaty" selected>Warsztaty</option>
+          <option value="Wyklad">Wyklad</option>
+          <option value="Konferencja">Konferencja</option>
+          <option value="Inne">Inne</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Data wydarzenia</label>
+        <input type="date" id="data">
+      </div>
+      <div class="form-group">
+        <label>Miejsce</label>
+        <input type="text" id="miejsce" placeholder="Sala/budynek...">
+      </div>
+      <div class="form-group">
+        <label>Maksymalna liczba uczestnikow</label>
+        <input type="number" id="limit" value="50" min="1">
+      </div>
+      <div class="form-group">
+        <label>Punkty za uczestnictwo</label>
+        <input type="number" id="punkty" value="10" min="1" max="100">
+        <small style="color:#718096;display:block;margin-top:4px">Ile punktow dostanie student po potwierdzeniu obecnosci</small>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="window.location='organizer.html'">Anuluj</button>
+        <button class="btn btn-primary" onclick="submitEvent()">Utworz wydarzenie</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function init() {
+      const res = await fetch('/api/me');
+      if (!res.ok) { window.location = '/'; return; }
+      const { user } = await res.json();
+      if (user.rola === 'Student') { window.location = '/events.html'; return; }
+    }
+
+    async function submitEvent() {
+      const nazwa        = document.getElementById('nazwa').value.trim();
+      const typ          = document.getElementById('typ').value;
+      const data_wyd     = document.getElementById('data').value;
+      const miejsce      = document.getElementById('miejsce').value.trim();
+      const limit_miejsc = document.getElementById('limit').value;
+      const punkty       = document.getElementById('punkty').value;
+      const errEl = document.getElementById('alert-error');
+      errEl.classList.add('hidden');
+
+      if (!nazwa)    { errEl.textContent = 'Podaj nazwe wydarzenia.'; errEl.classList.remove('hidden'); return; }
+      if (!data_wyd) { errEl.textContent = 'Wybierz date.';           errEl.classList.remove('hidden'); return; }
+      if (!miejsce)  { errEl.textContent = 'Podaj miejsce.';          errEl.classList.remove('hidden'); return; }
+
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nazwa, typ_wydarzenia: typ, data_wydarzenia: data_wyd, miejsce, limit_miejsc, punkty })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('alert-success').classList.remove('hidden');
+        document.getElementById('nazwa').value   = '';
+        document.getElementById('data').value    = '';
+        document.getElementById('miejsce').value = '';
+        document.getElementById('punkty').value  = '10';
+      } else {
+        errEl.textContent = data.error;
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location = '/';
+    }
+
+    init();
+  </script>
+</body>
+</html>

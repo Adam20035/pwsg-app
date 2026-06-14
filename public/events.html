@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wydarzenia – Platforma Wydarzen Studenckich</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .star-btn { background:none; border:none; font-size:1.6rem; cursor:pointer; color:#cbd5e0; padding:0 2px; transition:color .1s; }
+    .star-btn.active, .star-btn:hover { color:#f6ad55; }
+    .opinion-stars-row { display:flex; gap:2px; margin:8px 0 16px; }
+    .opinion-textarea { width:100%; box-sizing:border-box; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.95rem; resize:vertical; min-height:80px; }
+    .opinion-textarea:focus { outline:none; border-color:#2b6cb0; box-shadow:0 0 0 3px rgba(43,108,176,0.1); }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <div class="nav-links">
+      <span class="nav-user" id="nav-user"></span>
+      <a href="gamification.html">🏆 Ranking</a>
+      <a href="#" onclick="logout()">Wyloguj</a>
+    </div>
+  </nav>
+
+  <div class="container wide">
+    <div class="card">
+      <h1>Lista wydarzen</h1>
+      <div id="alert" class="alert hidden"></div>
+      <div id="events-body" class="loading">Ladowanie...</div>
+    </div>
+  </div>
+
+  <!-- Opinion modal -->
+  <div id="opinion-modal" class="modal-overlay">
+    <div class="card" style="width:480px;max-width:95vw;position:relative">
+      <button onclick="closeOpinionModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">✕</button>
+      <h1 style="margin-bottom:4px">Twoja opinia</h1>
+      <div id="opinion-event-label" style="color:#718096;font-size:0.9rem;margin-bottom:16px"></div>
+      <label style="font-weight:600">Ocena</label>
+      <div class="opinion-stars-row" id="opinion-stars">
+        <button class="star-btn" data-v="1" onclick="selectStar(1)">★</button>
+        <button class="star-btn" data-v="2" onclick="selectStar(2)">★</button>
+        <button class="star-btn" data-v="3" onclick="selectStar(3)">★</button>
+        <button class="star-btn" data-v="4" onclick="selectStar(4)">★</button>
+        <button class="star-btn" data-v="5" onclick="selectStar(5)">★</button>
+      </div>
+      <div class="form-group">
+        <label>Komentarz</label>
+        <textarea id="opinion-text" class="opinion-textarea" placeholder="Co sadzisz o tym wydarzeniu?"></textarea>
+      </div>
+      <div id="opinion-error" class="alert alert-error hidden" style="margin-bottom:12px"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="closeOpinionModal()">Anuluj</button>
+        <button class="btn btn-primary" onclick="submitOpinion()">Zapisz opinie</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let allEvents = [];
+    let currentRegId = null;
+    let selectedStar = 0;
+
+    async function init() {
+      const res = await fetch('/api/me');
+      if (!res.ok) { window.location = '/'; return; }
+      const data = await res.json();
+      currentUser = data.user;
+      if (currentUser.rola === 'Admin')       { window.location = '/admin.html'; return; }
+      if (currentUser.rola === 'Organizator') { window.location = '/organizer.html'; return; }
+      document.getElementById('nav-user').textContent = currentUser.imie_nazwisko;
+      loadEvents();
+    }
+
+    async function loadEvents() {
+      const res = await fetch('/api/events');
+      const events = await res.json();
+      allEvents = events;
+      const container = document.getElementById('events-body');
+
+      if (!events.length) {
+        container.innerHTML = '<p style="color:#718096;padding:20px 0">Brak dostepnych wydarzen.</p>';
+        return;
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      container.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>Nazwa</th><th>Typ</th><th>Data</th><th>Miejsce</th>
+            <th>Miejsca</th><th>Pkt</th><th>Status</th><th>Akcja</th>
+          </tr></thead>
+          <tbody>
+            ${events.map(e => {
+              const full = e.zapisani >= e.limit_miejsc;
+              const past = e.data_wydarzenia < today;
+              const isPresent = e.user_status === 'OBECNY';
+              const isRegistered = e.user_registered;
+
+              const regBadge = isPresent
+                ? '<span class="badge badge-green">Obecny</span>'
+                : (isRegistered ? '<span class="badge badge-blue">Zapisany</span>' : '');
+
+              let actionBtn = '';
+              if (past) {
+                actionBtn = isPresent
+                  ? `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`
+                  : '<span class="badge badge-gray">Zakonczone</span>';
+              } else if (isPresent) {
+                actionBtn = `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`;
+              } else if (isRegistered) {
+                actionBtn = `<button class="btn btn-warning btn-sm" onclick="unregister(${e.id})">Wypisz sie</button>`;
+              } else if (full) {
+                actionBtn = '<span class="badge badge-gray">Brak miejsc</span>';
+              } else {
+                actionBtn = `<button class="btn btn-primary btn-sm" onclick="register(${e.id})">Zapisz sie</button>`;
+              }
+
+              return `<tr>
+                <td><strong>${e.nazwa_wydarzenia}</strong> ${regBadge}</td>
+                <td><span class="badge badge-blue">${e.typ_wydarzenia||'Inne'}</span></td>
+                <td>${e.data_wydarzenia}</td>
+                <td>${e.miejsce}</td>
+                <td>${e.zapisani}/${e.limit_miejsc}</td>
+                <td><strong>${e.punkty||10}</strong></td>
+                <td><span class="badge ${past ? 'badge-gray' : full ? 'badge-orange' : 'badge-green'}">${past ? 'Zakonczone' : full ? 'Kompletne' : 'Aktywne'}</span></td>
+                <td>${actionBtn}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function register(id) {
+      const res = await fetch(`/api/events/${id}/register`, { method: 'POST' });
+      const data = await res.json();
+      const evt = allEvents.find(e => e.id === id);
+      const pts = evt ? (evt.punkty || 10) : 10;
+      showAlert(res.ok ? `Zapisano! (+${pts} pkt po potwierdzeniu obecnosci)` : data.error, res.ok ? 'success' : 'error');
+      if (res.ok) loadEvents();
+    }
+
+    async function unregister(id) {
+      const res = await fetch(`/api/events/${id}/unregister`, { method: 'POST' });
+      const data = await res.json();
+      showAlert(res.ok ? 'Wypisano z wydarzenia.' : data.error, res.ok ? 'success' : 'error');
+      if (res.ok) loadEvents();
+    }
+
+    // ── Opinion modal ───────────────────────────────────────────
+    async function openOpinion(regId, eventName) {
+      currentRegId = regId;
+      selectedStar = 0;
+      document.getElementById('opinion-event-label').textContent = eventName;
+      document.getElementById('opinion-text').value = '';
+      document.getElementById('opinion-error').classList.add('hidden');
+      renderStars(0);
+
+      // fetch existing opinion
+      const res = await fetch(`/api/opinions/by-reg/${regId}`);
+      if (res.ok) {
+        const existing = await res.json();
+        if (existing) {
+          selectedStar = existing.ocena;
+          document.getElementById('opinion-text').value = existing.tresc;
+          renderStars(existing.ocena);
+        }
+      }
+
+      document.getElementById('opinion-modal').style.display = 'flex';
+    }
+
+    function closeOpinionModal() {
+      document.getElementById('opinion-modal').style.display = 'none';
+    }
+
+    function selectStar(val) {
+      selectedStar = val;
+      renderStars(val);
+    }
+
+    function renderStars(val) {
+      document.querySelectorAll('.star-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.v) <= val);
+      });
+    }
+
+    async function submitOpinion() {
+      const tresc = document.getElementById('opinion-text').value.trim();
+      const errEl = document.getElementById('opinion-error');
+      errEl.classList.add('hidden');
+
+      if (!selectedStar) { errEl.textContent = 'Wybierz ocene (1-5 gwiazdek).'; errEl.classList.remove('hidden'); return; }
+      if (!tresc)        { errEl.textContent = 'Wpisz komentarz.';               errEl.classList.remove('hidden'); return; }
+
+      const res = await fetch(`/api/opinions/${currentRegId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocena: selectedStar, tresc })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        closeOpinionModal();
+        showAlert('Opinia zapisana!', 'success');
+      } else {
+        errEl.textContent = data.error;
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location = '/';
+    }
+
+    function showAlert(msg, type = 'success') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = `alert alert-${type}`;
+      setTimeout(() => el.className = 'alert hidden', 4000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
