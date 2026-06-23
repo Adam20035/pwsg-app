@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomoc - Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .help-section{margin-bottom:28px}
+    .help-section h2{font-size:1.1rem;font-weight:700;color:#1a3a6b;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #ebf4ff}
+    .help-step{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
+    .step-num{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#1a3a6b,#2b6cb0);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+    .step-text{font-size:.9rem;color:#2d3748;line-height:1.5}
+    .step-text strong{color:#1a3a6b}
+    .faq-item{margin-bottom:12px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+    .faq-q{padding:12px 16px;background:#f8fafc;font-weight:600;font-size:.9rem;color:#2d3748;cursor:pointer;user-select:none}
+    .faq-a{padding:0 16px 12px;font-size:.875rem;color:#4a5568;line-height:1.6;display:none}
+    .faq-item.open .faq-a{display:block}
+    .faq-item.open .faq-q{background:#ebf4ff;color:#1a3a6b}
+    .tip-box{background:#fffbeb;border:1px solid #f6d860;border-radius:8px;padding:12px 16px;margin-bottom:10px;font-size:.875rem;color:#744210}
+    .tip-box::before{content:"💡 ";}
+    .contact-box{background:#ebf4ff;border-radius:10px;padding:16px 20px;margin-top:8px;font-size:.875rem;color:#1a3a6b}
+  </style>
+</head>
+<body>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Platforma Wydarzen</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <nav class="drawer-nav" id="drawer-nav"></nav>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+  <div class="nav-links">
+    <a href="#" id="nav-home">Strona glowna</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
+  </div>
+</nav>
+<div class="container">
+  <div class="card">
+    <h1>&#10067; Pomoc i instrukcja</h1>
+
+    <div class="help-section">
+      <h2>&#128203; Jak zapisac sie na wydarzenie?</h2>
+      <div class="help-step"><div class="step-num">1</div><div class="step-text">Przejdz do <strong>Listy wydarzen</strong> i znajdz interesujace Cie wydarzenie.</div></div>
+      <div class="help-step"><div class="step-num">2</div><div class="step-text">Sprawdz date, miejsce i dostepnosc miejsc (pasek pod karta).</div></div>
+      <div class="help-step"><div class="step-num">3</div><div class="step-text">Kliknij przycisk <strong>Zapisz sie</strong>. Pojawi sie potwierdzenie z liczba punktow.</div></div>
+      <div class="help-step"><div class="step-num">4</div><div class="step-text">Mozesz sie wypisac klikajac <strong>Wypisz sie</strong> — o ile wydarzenie jeszcze sie nie odbyte.</div></div>
+      <div class="tip-box">Punkty dostajesz dopiero po fizycznym udziale — organizator potwierdza Twoja obecnosc na miejscu.</div>
+    </div>
+
+    <div class="help-section">
+      <h2>&#127942; Jak dziala system punktow?</h2>
+      <div class="help-step"><div class="step-num">1</div><div class="step-text">Zapisz sie na wydarzenie i pojaw sie na nim.</div></div>
+      <div class="help-step"><div class="step-num">2</div><div class="step-text">Organizator oznacza Cie jako <strong>Obecny</strong> — punkty trafiaja na Twoje konto automatycznie.</div></div>
+      <div class="help-step"><div class="step-num">3</div><div class="step-text">Sprawdz swoj wynik i pozycje w rankingu w zakladce <strong>Ranking</strong>.</div></div>
+      <div class="tip-box">Kazde wydarzenie ma inna liczbe punktow — sprawdz szczegoly karty przed zapisem.</div>
+    </div>
+
+    <div class="help-section">
+      <h2>&#11088; Jak wystawic opinie?</h2>
+      <div class="help-step"><div class="step-num">1</div><div class="step-text">Po potwierdzeniu obecnosci na wydarzeniu pojawi sie przycisk <strong>Opinia</strong> na karcie wydarzenia.</div></div>
+      <div class="help-step"><div class="step-num">2</div><div class="step-text">Wybierz ocene w skali 1-5 gwiazdek i napisz krotki komentarz.</div></div>
+      <div class="help-step"><div class="step-num">3</div><div class="step-text">Kliknij <strong>Zapisz opinie</strong>. Mozesz ja pozniej edytowac.</div></div>
+    </div>
+
+    <div class="help-section">
+      <h2>&#128218; Najczesciej zadawane pytania</h2>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">&#9656; Nie widze przycisku "Zapisz sie"</div>
+        <div class="faq-a">Przycisk nie pojawia sie gdy: wydarzenie jest juz kompletne (brak miejsc), wydarzenie minelo, lub jestes juz zapisany/a.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">&#9656; Nie dostaje punktow po wydarzeniu</div>
+        <div class="faq-a">Punkty dodaje reczenie organizator po zakonczeniu wydarzenia. Jesli po kilku dniach nadal ich nie ma — skontaktuj sie z organizatorem lub administratorem.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">&#9656; Chce zmienic haslo lub dane konta</div>
+        <div class="faq-a">Dane konta mozna zmienic tylko przez administratora systemu. Skontaktuj sie z nim podajac swoj email.</div>
+      </div>
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="faq-q">&#9656; Strona laduje sie bardzo wolno przy pierwszym wejsciu</div>
+        <div class="faq-a">To normalne zachowanie — baza danych przechodzi w tryb uspienia po dluzszej bezczynnosci. Pierwsze zaladowanie moze zajac kilkanasce sekund. Kolejne sa szybkie.</div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h2>&#128222; Kontakt</h2>
+      <div class="contact-box">
+        <strong>Administrator systemu:</strong><br>
+        W razie problemow technicznych, blokady konta lub innych spraw — skontaktuj sie z administratorem uczelni.<br><br>
+        <strong>Email:</strong> admin@pwsg.pl
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+async function init(){
+  try{
+    var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
+    var u=(await r.json()).user;
+    var homeUrl=u.rola==='Admin'?'/admin.html':u.rola==='Organizator'?'/organizer.html':'/events.html';
+    document.getElementById('nav-home').href=homeUrl;
+    document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+    var studentLinks='<a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a><a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>';
+    var orgLinks='<a href="organizer.html"><span class="dicon">&#128203;</span> Moje wydarzenia</a><a href="create-event.html"><span class="dicon">&#10133;</span> Nowe wydarzenie</a>';
+    var adminLinks='<a href="admin.html"><span class="dicon">&#128101;</span> Panel admina</a>';
+    var roleLinks=u.rola==='Admin'?adminLinks:u.rola==='Organizator'?orgLinks:studentLinks;
+    document.getElementById('drawer-nav').innerHTML=roleLinks+'<div class="drawer-divider"></div><a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a><a href="help.html" class="active"><span class="dicon">&#10067;</span> Pomoc</a><a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a><div class="drawer-divider"></div><a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>';
+  }catch(e){}
+}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
+init();
+</script>
+</body>
+</html>

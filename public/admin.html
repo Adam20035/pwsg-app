@@ -1,135 +1,79 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Admina – Platforma Wydarzen Studenckich</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Admina - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav>
-    <span class="brand">
-      <img src="logo.png" class="nav-logo" alt="WAT">
-      <span>Platforma Wydarzen Studenckich</span>
-    </span>
-    <div class="nav-links">
-      <a href="#" onclick="showTab('users')" id="tab-users-link">👥 Uzytkownicy</a>
-      <a href="#" onclick="showTab('events')" id="tab-events-link">📅 Wydarzenia</a>
-      <a href="#" onclick="logout()">Wyloguj</a>
-    </div>
-  </nav>
-
-  <div class="container wide">
-    <!-- Users tab -->
-    <div id="tab-users" class="card">
-      <h1>Panel Administratora – Uzytkownicy</h1>
-      <div id="alert-users" class="alert hidden"></div>
-      <div id="users-body" class="loading">Ladowanie...</div>
-    </div>
-
-    <!-- Events tab -->
-    <div id="tab-events" class="card hidden" style="margin-top:20px">
-      <h1>Panel Administratora – Wszystkie wydarzenia</h1>
-      <div id="events-body" class="loading">Ladowanie...</div>
-    </div>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Panel Admina</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
   </div>
-
-  <script>
-    async function init() {
-      const res = await fetch('/api/me');
-      if (!res.ok) { window.location = '/'; return; }
-      const { user } = await res.json();
-      if (user.rola !== 'Admin') { window.location = '/'; return; }
-      loadUsers();
-    }
-
-    function showTab(tab) {
-      document.getElementById('tab-users').classList.toggle('hidden', tab !== 'users');
-      document.getElementById('tab-events').classList.toggle('hidden', tab !== 'events');
-      if (tab === 'events') loadAllEvents();
-    }
-
-    async function loadUsers() {
-      const res   = await fetch('/api/admin/users');
-      const users = await res.json();
-      const el    = document.getElementById('users-body');
-
-      const roleColor = r => r === 'Admin' ? 'badge-orange' : r === 'Organizator' ? 'badge-blue' : 'badge-gray';
-      el.innerHTML = `
-        <div class="table-responsive">
-        <table>
-          <thead><tr><th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Punkty</th><th>Akcja</th></tr></thead>
-          <tbody>
-            ${users.map(u => `
-            <tr>
-              <td><strong>${u.imie_nazwisko}</strong></td>
-              <td>${u.email}</td>
-              <td><span class="badge ${roleColor(u.rola)}">${u.rola}</span></td>
-              <td><span class="badge ${u.active ? 'badge-green' : 'badge-gray'}">${u.active ? 'Aktywny' : 'Zablokowany'}</span></td>
-              <td>${u.suma_punktow}</td>
-              <td>
-                <button class="btn btn-warning btn-sm" style="width:88px" onclick="toggleUser(${u.id})">
-                  ${u.active ? 'Zablokuj' : 'Odblokuj'}
-                </button>
-                <button class="btn btn-danger btn-sm" style="margin-left:6px" onclick="deleteUser(${u.id}, '${u.email}')">Usun</button>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-        </div>`;
-    }
-
-    async function loadAllEvents() {
-      const res    = await fetch('/api/admin/events');
-      const events = await res.json();
-      document.getElementById('events-body').innerHTML = `
-        <div class="table-responsive">
-        <table>
-          <thead><tr><th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Limit</th><th>Zapisanych</th><th>Organizator</th></tr></thead>
-          <tbody>
-            ${events.map(e => `
-            <tr>
-              <td><strong>${e.nazwa_wydarzenia}</strong></td>
-              <td>${e.data_wydarzenia}</td>
-              <td>${e.miejsce}</td>
-              <td>${e.limit_miejsc}</td>
-              <td>${e.zapisani}</td>
-              <td>${e.organizator_nazwa}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-        </div>`;
-    }
-
-    async function toggleUser(id) {
-      const res = await fetch(`/api/admin/users/${id}/toggle`, { method: 'POST' });
-      const d = await res.json();
-      if (res.ok) { showAlert('Status uzytkownika zmieniony.', 'success'); loadUsers(); }
-      else showAlert(d.error, 'error');
-    }
-
-    async function deleteUser(id, email) {
-      if (!confirm(`Usunac uzytkownika ${email}? Tej operacji nie mozna cofnac.`)) return;
-      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-      const d = await res.json();
-      if (res.ok) { showAlert('Konto usuniete.', 'success'); loadUsers(); }
-      else showAlert(d.error, 'error');
-    }
-
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location = '/';
-    }
-
-    function showAlert(msg, type) {
-      const el = document.getElementById('alert-users');
-      el.textContent = msg;
-      el.className = `alert alert-${type}`;
-      setTimeout(() => el.className = 'alert hidden', 4000);
-    }
-
-    init();
-  </script>
+  <nav class="drawer-nav">
+    <a href="#" onclick="showTab('users');closeDrawer()"><span class="dicon">&#128101;</span> Uzytkownicy</a>
+    <a href="#" onclick="showTab('events');closeDrawer()"><span class="dicon">&#128197;</span> Wszystkie wydarzenia</a>
+    <div class="drawer-divider"></div>
+    <a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a>
+    <a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a>
+    <a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a>
+    <div class="drawer-divider"></div>
+    <a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>
+  </nav>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+  <div class="nav-links">
+    <a href="#" onclick="showTab('users')">&#128101; Uzytkownicy</a>
+    <a href="#" onclick="showTab('events')">&#128197; Wydarzenia</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
+  </div>
+</nav>
+<div class="container wide">
+  <div id="tab-users" class="card">
+    <h1>Panel Administratora - Uzytkownicy</h1>
+    <div id="alert-users" class="alert hidden"></div>
+    <div id="users-body" class="loading">Ladowanie...</div>
+  </div>
+  <div id="tab-events" class="card hidden" style="margin-top:20px">
+    <h1>Panel Administratora - Wszystkie wydarzenia</h1>
+    <div id="events-body" class="loading">Ladowanie...</div>
+  </div>
+</div>
+<script>
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+async function init(){
+  var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
+  var u=(await r.json()).user;if(u.rola!=='Admin'){window.location='/';return;}
+  document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+  loadUsers();
+}
+function showTab(tab){
+  document.getElementById('tab-users').classList.toggle('hidden',tab!=='users');
+  document.getElementById('tab-events').classList.toggle('hidden',tab!=='events');
+  if(tab==='events')loadAllEvents();
+}
+async function loadUsers(){
+  var r=await fetch('/api/admin/users');var users=await r.json();
+  var rc=function(r){return r==='Admin'?'badge-orange':r==='Organizator'?'badge-blue':'badge-gray';};
+  document.getElementById('users-body').innerHTML='<div class="table-responsive"><table><thead><tr><th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Pkt</th><th>Akcja</th></tr></thead><tbody>'+users.map(function(u){return '<tr><td><strong>'+u.imie_nazwisko+'</strong></td><td>'+u.email+'</td><td><span class="badge '+rc(u.rola)+'">'+u.rola+'</span></td><td><span class="badge '+(u.active?'badge-green':'badge-gray')+'">'+(u.active?'Aktywny':'Zablokowany')+'</span></td><td>'+u.suma_punktow+'</td><td><button class="btn btn-warning btn-sm" onclick="toggleUser('+u.id+')">'+(u.active?'Zablokuj':'Odblokuj')+'</button> <button class="btn btn-danger btn-sm" onclick="deleteUser('+u.id+',\''+u.email+'\')">Usun</button></td></tr>';}).join('')+'</tbody></table></div>';
+}
+async function loadAllEvents(){
+  var r=await fetch('/api/admin/events');var ev=await r.json();
+  document.getElementById('events-body').innerHTML='<div class="table-responsive"><table><thead><tr><th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Limit</th><th>Zapisanych</th><th>Organizator</th></tr></thead><tbody>'+ev.map(function(e){return '<tr><td><strong>'+e.nazwa_wydarzenia+'</strong></td><td>'+e.data_wydarzenia+'</td><td>'+e.miejsce+'</td><td>'+e.limit_miejsc+'</td><td>'+e.zapisani+'</td><td>'+e.organizator_nazwa+'</td></tr>';}).join('')+'</tbody></table></div>';
+}
+async function toggleUser(id){var r=await fetch('/api/admin/users/'+id+'/toggle',{method:'POST'});var d=await r.json();if(r.ok){showAlert('Status zmieniony.','success');loadUsers();}else showAlert(d.error,'error');}
+async function deleteUser(id,email){if(!confirm('Usunac '+email+'?'))return;var r=await fetch('/api/admin/users/'+id,{method:'DELETE'});var d=await r.json();if(r.ok){showAlert('Usunieto.','success');loadUsers();}else showAlert(d.error,'error');}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
+function showAlert(msg,type){var el=document.getElementById('alert-users');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
+init();
+</script>
 </body>
 </html>

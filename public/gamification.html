@@ -1,145 +1,97 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ranking – Platforma Wydarzen Studenckich</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ranking - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .star { font-size: 1.4rem; color: #cbd5e0; cursor: pointer; transition: color .1s; }
-    .star.active { color: #f6ad55; }
-  </style>
+  <style>.star{font-size:1.3rem;color:#cbd5e0;cursor:pointer;transition:color .1s}.star.active{color:#f6ad55}</style>
 </head>
 <body>
-  <nav>
-    <span class="brand">
-      <img src="logo.png" class="nav-logo" alt="WAT">
-      <span>Platforma Wydarzen Studenckich</span>
-    </span>
-    <div class="nav-links">
-      <span class="nav-user" id="nav-user"></span>
-      <a href="events.html">Wydarzenia</a>
-      <a href="#" onclick="logout()">Wyloguj</a>
-    </div>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Platforma Wydarzen</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <nav class="drawer-nav">
+    <a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a>
+    <a href="gamification.html" class="active"><span class="dicon">&#127942;</span> Ranking</a>
+    <div class="drawer-divider"></div>
+    <a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a>
+    <a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a>
+    <a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a>
+    <div class="drawer-divider"></div>
+    <a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>
   </nav>
-
-  <div class="container">
-    <div class="card">
-      <h1>🏆 Ranking punktowy</h1>
-      <div id="alert" class="alert hidden"></div>
-
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="value" id="my-points">–</div>
-          <div class="label">Twoje punkty</div>
-        </div>
-        <div class="stat-card">
-          <div class="value" id="my-rank">–</div>
-          <div class="label">Twoja pozycja</div>
-        </div>
-      </div>
-
-      <h2 class="section-title" style="border-top:none;padding-top:0;margin-top:0">Top studentow:</h2>
-      <ul class="ranking-list" id="ranking-list"><li class="loading">Ladowanie...</li></ul>
-
-      <div id="opinions-section" class="hidden">
-        <div class="section-title">✍️ Oczekujace opinie</div>
-        <p style="font-size:0.875rem;color:#718096;margin-bottom:14px">
-          Bylesy na tych wydarzeniach – wystaw opinie:
-        </p>
-        <div id="opinions-list"></div>
-      </div>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+  <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
+    <a href="events.html">Wydarzenia</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
+  </div>
+</nav>
+<div class="container">
+  <div class="card">
+    <h1>&#127942; Ranking punktowy</h1>
+    <div id="alert" class="alert hidden"></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="value" id="my-points">-</div><div class="label">Twoje punkty</div></div>
+      <div class="stat-card"><div class="value" id="my-rank">-</div><div class="label">Twoja pozycja</div></div>
+    </div>
+    <h2 class="section-title" style="border-top:none;padding-top:0;margin-top:0">Top studentow:</h2>
+    <ul class="ranking-list" id="ranking-list"><li class="loading">Ladowanie...</li></ul>
+    <div id="opinions-section" class="hidden">
+      <div class="section-title">&#9997;&#65039; Oczekujace opinie</div>
+      <p style="font-size:.875rem;color:#718096;margin-bottom:14px">Bylesy na tych wydarzeniach - wystaw opinie:</p>
+      <div id="opinions-list"></div>
     </div>
   </div>
-
-  <script>
-    let currentUser = null;
-
-    async function init() {
-      const res = await fetch('/api/me');
-      if (!res.ok) { window.location = '/'; return; }
-      currentUser = (await res.json()).user;
-      if (currentUser.rola !== 'Student') { window.location = '/'; return; }
-      document.getElementById('nav-user').textContent = currentUser.imie_nazwisko;
-      await loadRanking();
-      await loadPendingOpinions();
-    }
-
-    async function loadRanking() {
-      const res  = await fetch('/api/ranking');
-      const data = await res.json();
-      document.getElementById('my-points').textContent = data.my_points;
-      document.getElementById('my-rank').textContent   = data.my_rank ? `#${data.my_rank}` : '–';
-
-      const medalClass = i => i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-      document.getElementById('ranking-list').innerHTML = data.ranking.map((u, i) => `
-        <li>
-          <div class="rank-number ${medalClass(i)}">${i + 1}</div>
-          <div class="rank-name">${u.imie_nazwisko} ${u.id === currentUser.id ? '<span style="font-size:0.75rem;color:#2b6cb0">(Ty)</span>' : ''}</div>
-          <div class="rank-points">${u.suma_punktow} pkt</div>
-        </li>`).join('');
-    }
-
-    async function loadPendingOpinions() {
-      const res  = await fetch('/api/opinions/pending');
-      const list = await res.json();
-      if (!list.length) return;
-      document.getElementById('opinions-section').classList.remove('hidden');
-      document.getElementById('opinions-list').innerHTML = list.map(o => `
-        <div class="opinion-card" id="op-${o.reg_id}">
-          <h4>📅 ${o.nazwa_wydarzenia} (${o.data_wydarzenia})</h4>
-          <div class="stars" id="stars-${o.reg_id}" style="display:flex;gap:4px;margin:10px 0">
-            ${[1,2,3,4,5].map(n => `<span class="star" data-reg="${o.reg_id}" data-val="${n}" onclick="setStar(${o.reg_id},${n})">★</span>`).join('')}
-          </div>
-          <div class="form-group" style="margin-bottom:10px">
-            <textarea id="tresc-${o.reg_id}" placeholder="Napisz krotka opinie..."></textarea>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="submitOpinion(${o.reg_id})">Wyslij opinie</button>
-        </div>`).join('');
-    }
-
-    const selectedStars = {};
-    function setStar(regId, val) {
-      selectedStars[regId] = val;
-      document.querySelectorAll(`#stars-${regId} .star`).forEach(s => {
-        s.classList.toggle('active', parseInt(s.dataset.val) <= val);
-      });
-    }
-
-    async function submitOpinion(regId) {
-      const ocena = selectedStars[regId];
-      const tresc = document.getElementById(`tresc-${regId}`).value.trim();
-      if (!ocena) { showAlert('Wybierz ocene (1-5 gwiazdek).', 'error'); return; }
-      if (!tresc)  { showAlert('Napisz krotka opinie.', 'error'); return; }
-
-      const res = await fetch('/api/opinions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_rejestracji: regId, ocena, tresc })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        document.getElementById(`op-${regId}`).remove();
-        showAlert('Dziekujemy za opinie!', 'success');
-      } else {
-        showAlert(data.error, 'error');
-      }
-    }
-
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location = '/';
-    }
-
-    function showAlert(msg, type = 'success') {
-      const el = document.getElementById('alert');
-      el.textContent = msg;
-      el.className = `alert alert-${type}`;
-      setTimeout(() => el.className = 'alert hidden', 4000);
-    }
-
-    init();
-  </script>
+</div>
+<script>
+var currentUser=null;
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+async function init(){
+  var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
+  currentUser=(await r.json()).user;if(currentUser.rola!=='Student'){window.location='/';return;}
+  document.getElementById('nav-user').textContent=currentUser.imie_nazwisko;
+  document.getElementById('drawer-user-info').innerHTML='<strong>'+currentUser.imie_nazwisko+'</strong>'+currentUser.email;
+  await loadRanking();await loadPendingOpinions();
+}
+async function loadRanking(){
+  var r=await fetch('/api/ranking');var d=await r.json();
+  document.getElementById('my-points').textContent=d.my_points;
+  document.getElementById('my-rank').textContent=d.my_rank?'#'+d.my_rank:'-';
+  var mc=function(i){return i===0?'gold':i===1?'silver':i===2?'bronze':'';};
+  document.getElementById('ranking-list').innerHTML=d.ranking.map(function(u,i){
+    return '<li><div class="rank-number '+mc(i)+'">'+(i+1)+'</div><div class="rank-name">'+u.imie_nazwisko+(u.id===currentUser.id?' <span style="font-size:.75rem;color:#2b6cb0">(Ty)</span>':'')+'</div><div class="rank-points">'+u.suma_punktow+' pkt</div></li>';
+  }).join('');
+}
+async function loadPendingOpinions(){
+  var r=await fetch('/api/opinions/pending');var list=await r.json();if(!list.length)return;
+  document.getElementById('opinions-section').classList.remove('hidden');
+  document.getElementById('opinions-list').innerHTML=list.map(function(o){
+    return '<div class="opinion-card" id="op-'+o.reg_id+'"><h4>&#128197; '+o.nazwa_wydarzenia+' ('+o.data_wydarzenia+')</h4><div id="stars-'+o.reg_id+'" style="display:flex;gap:4px;margin:10px 0">'+[1,2,3,4,5].map(function(n){return '<span class="star" onclick="setStar('+o.reg_id+','+n+')">&#9733;</span>';}).join('')+'</div><div class="form-group" style="margin-bottom:10px"><textarea id="tresc-'+o.reg_id+'" placeholder="Napisz krotka opinie..."></textarea></div><button class="btn btn-primary btn-sm" onclick="submitOpinion('+o.reg_id+')">Wyslij opinie</button></div>';
+  }).join('');
+}
+var selStars={};
+function setStar(regId,val){selStars[regId]=val;var stars=document.querySelectorAll('#stars-'+regId+' .star');stars.forEach(function(s,i){s.classList.toggle('active',i<val);});}
+async function submitOpinion(regId){
+  var ocena=selStars[regId],tresc=document.getElementById('tresc-'+regId).value.trim();
+  if(!ocena){showAlert('Wybierz ocene.','error');return;}if(!tresc){showAlert('Wpisz opinie.','error');return;}
+  var r=await fetch('/api/opinions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id_rejestracji:regId,ocena:ocena,tresc:tresc})});
+  var d=await r.json();
+  if(r.ok){document.getElementById('op-'+regId).remove();showAlert('Dziekujemy za opinie!','success');}else showAlert(d.error,'error');
+}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
+function showAlert(msg,type){var el=document.getElementById('alert');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
+init();
+</script>
 </body>
 </html>

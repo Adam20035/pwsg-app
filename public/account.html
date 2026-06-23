@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moje konto - Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .profile-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#1a3a6b,#2b6cb0);display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;font-weight:700;margin-bottom:16px}
+    .profile-header{display:flex;align-items:center;gap:20px;margin-bottom:28px;padding-bottom:24px;border-bottom:2px solid #ebf4ff;flex-wrap:wrap}
+    .profile-name{font-size:1.4rem;font-weight:700;color:#1a3a6b}
+    .profile-role{font-size:.9rem;color:#718096;margin-top:4px}
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+    .info-item{background:#f8fafc;border-radius:10px;padding:16px;border:1px solid #e2e8f0}
+    .info-label{font-size:.75rem;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+    .info-value{font-size:1rem;font-weight:600;color:#2d3748}
+    .points-big{font-size:2rem;font-weight:800;color:#1a3a6b}
+  </style>
+</head>
+<body>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Platforma Wydarzen</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <nav class="drawer-nav" id="drawer-nav"></nav>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+  <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
+    <a href="#" id="nav-home">Strona glowna</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
+  </div>
+</nav>
+<div class="container">
+  <div class="card" id="profile-card">
+    <div class="loading">Ladowanie...</div>
+  </div>
+</div>
+<script>
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+async function init(){
+  try{
+    var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
+    var u=(await r.json()).user;
+    var homeUrl=u.rola==='Admin'?'/admin.html':u.rola==='Organizator'?'/organizer.html':'/events.html';
+    document.getElementById('nav-home').href=homeUrl;
+    document.getElementById('nav-user').textContent=u.imie_nazwisko;
+    document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+    var studentLinks='<a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a><a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>';
+    var orgLinks='<a href="organizer.html"><span class="dicon">&#128203;</span> Moje wydarzenia</a><a href="create-event.html"><span class="dicon">&#10133;</span> Nowe wydarzenie</a>';
+    var adminLinks='<a href="admin.html"><span class="dicon">&#128101;</span> Panel admina</a>';
+    var roleLinks=u.rola==='Admin'?adminLinks:u.rola==='Organizator'?orgLinks:studentLinks;
+    document.getElementById('drawer-nav').innerHTML=roleLinks+'<div class="drawer-divider"></div><a href="account.html" class="active"><span class="dicon">&#128100;</span> Moje konto</a><a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a><a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a><div class="drawer-divider"></div><a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>';
+    var initials=u.imie_nazwisko.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+    var roleLabel=u.rola==='Admin'?'Administrator':u.rola==='Organizator'?'Organizator wydarzen':'Student';
+    var roleBadge=u.rola==='Admin'?'badge-orange':u.rola==='Organizator'?'badge-blue':'badge-gray';
+    var pointsSection=u.rola==='Student'?'<div class="info-item"><div class="info-label">Punkty gamifikacji</div><div class="points-big">'+u.suma_punktow+'</div></div>':'';
+    var statusBadge=u.active?'<span class="badge badge-green">Aktywne</span>':'<span class="badge badge-gray">Zablokowane</span>';
+    document.getElementById('profile-card').innerHTML='<h1>Moje konto</h1><div class="profile-header"><div class="profile-avatar">'+initials+'</div><div><div class="profile-name">'+u.imie_nazwisko+'</div><div class="profile-role"><span class="badge '+roleBadge+'">'+u.rola+'</span></div></div></div><div class="info-grid"><div class="info-item"><div class="info-label">Imie i nazwisko</div><div class="info-value">'+u.imie_nazwisko+'</div></div><div class="info-item"><div class="info-label">Adres e-mail</div><div class="info-value">'+u.email+'</div></div><div class="info-item"><div class="info-label">Rola w systemie</div><div class="info-value">'+roleLabel+'</div></div><div class="info-item"><div class="info-label">Status konta</div><div class="info-value">'+statusBadge+'</div></div>'+pointsSection+'</div><div class="alert alert-info" style="font-size:.85rem">&#8505;&#65039; Aby zmienic dane konta, skontaktuj sie z administratorem systemu.</div>';
+  }catch(e){document.getElementById('profile-card').innerHTML='<div class="alert alert-error">Blad ladowania profilu.</div>';}
+}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
+init();
+</script>
+</body>
+</html>

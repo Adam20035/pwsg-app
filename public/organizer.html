@@ -1,200 +1,116 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Organizatora – Platforma Wydarzen Studenckich</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Organizatora - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .opinion-card{background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:10px}
+    .opinion-stars{color:#f6ad55;font-size:1.1rem;margin-bottom:4px}
+    .opinion-author{font-weight:600;font-size:.9rem;color:#2d3748}
+    .opinion-text{color:#4a5568;font-size:.9rem;margin-top:4px}
+    .no-opinions{color:#718096;padding:16px 0}
+  </style>
 </head>
 <body>
-  <nav>
-    <span class="brand">
-      <img src="logo.png" class="nav-logo" alt="WAT">
-      <span>Platforma Wydarzen Studenckich</span>
-    </span>
-    <div class="nav-links">
-      <span class="nav-user" id="nav-user"></span>
-      <a href="create-event.html">+ Nowe wydarzenie</a>
-      <a href="#" onclick="logout()">Wyloguj</a>
-    </div>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Platforma Wydarzen</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <nav class="drawer-nav">
+    <a href="organizer.html" class="active"><span class="dicon">&#128203;</span> Moje wydarzenia</a>
+    <a href="create-event.html"><span class="dicon">&#10133;</span> Nowe wydarzenie</a>
+    <div class="drawer-divider"></div>
+    <a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a>
+    <a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a>
+    <a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a>
+    <div class="drawer-divider"></div>
+    <a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>
   </nav>
-
-  <div class="container wide">
-    <div class="card">
-      <h1>Panel Organizatora</h1>
-      <div id="alert" class="alert hidden"></div>
-      <div id="events-list" class="loading">Ladowanie...</div>
-    </div>
-
-    <!-- Participants modal -->
-    <div id="modal-participants" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;z-index:100;padding:16px">
-      <div class="card" style="width:620px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
-        <button onclick="closeParticipantsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">✕</button>
-        <h1 id="participants-title">Uczestnicy</h1>
-        <div id="participants-body" class="loading">Ladowanie...</div>
-      </div>
-    </div>
-
-    <!-- Opinions modal -->
-    <div id="modal-opinions" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;z-index:100;padding:16px">
-      <div class="card" style="width:560px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
-        <button onclick="closeOpinionsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">✕</button>
-        <h1 id="opinions-title">Opinie uczestnikow</h1>
-        <div id="opinions-body">Ladowanie...</div>
-      </div>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+  <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
+    <a href="create-event.html">+ Nowe wydarzenie</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
+  </div>
+</nav>
+<div class="container wide">
+  <div class="card">
+    <h1>Panel Organizatora</h1>
+    <div id="alert" class="alert hidden"></div>
+    <div id="events-list" class="loading">Ladowanie...</div>
+  </div>
+  <div id="modal-participants" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px">
+    <div class="card" style="width:620px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
+      <button onclick="closeParticipantsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+      <h1 id="participants-title">Uczestnicy</h1>
+      <div id="participants-body" class="loading">Ladowanie...</div>
     </div>
   </div>
-
-  <script>
-    let currentEventId = null;
-    let currentEventPunkty = 10;
-
-    async function init() {
-      const res = await fetch('/api/me');
-      if (!res.ok) { window.location = '/'; return; }
-      const { user } = await res.json();
-      if (user.rola === 'Student') { window.location = '/events.html'; return; }
-      if (user.rola === 'Admin')   { window.location = '/admin.html'; return; }
-      document.getElementById('nav-user').textContent = user.imie_nazwisko;
-      loadEvents();
-    }
-
-    async function loadEvents() {
-      const res    = await fetch('/api/events?mine=1');
-      const events = await res.json();
-      const el     = document.getElementById('events-list');
-
-      if (!events.length) {
-        el.innerHTML = '<p style="color:#718096;padding:20px 0">Nie masz jeszcze zadnych wydarzen. <a href="create-event.html">Stworz pierwsze</a>.</p>';
-        return;
-      }
-
-      const today = new Date().toISOString().slice(0, 10);
-      el.innerHTML = events.map(e => {
-        const past = e.data_wydarzenia < today;
-        return `
-        <div class="event-card">
-          <div class="event-info">
-            <div class="event-name">${e.nazwa_wydarzenia}</div>
-            <div class="event-meta">
-              <span class="badge badge-blue">${e.typ_wydarzenia||'Inne'}</span>
-              &nbsp;📅 ${e.data_wydarzenia} &nbsp;|&nbsp; 📍 ${e.miejsce} &nbsp;|&nbsp; 👥 ${e.zapisani}/${e.limit_miejsc} zapisanych &nbsp;|&nbsp; ⭐ ${e.punkty||10} pkt
-            </div>
-          </div>
-          <div class="event-actions">
-            <button class="btn btn-secondary btn-sm" onclick="openParticipants(${e.id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}', ${e.punkty||10})">
-              Uczestnicy
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="openOpinions(${e.id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">
-              Opinie
-            </button>
-            ${!past ? `<button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Usun</button>` : ''}
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    async function openParticipants(eventId, eventName, punkty) {
-      currentEventId = eventId;
-      currentEventPunkty = punkty || 10;
-      document.getElementById('participants-title').textContent = 'Uczestnicy: ' + eventName;
-      document.getElementById('participants-body').innerHTML = '<div class="loading">Ladowanie...</div>';
-      document.getElementById('modal-participants').style.display = 'flex';
-      await refreshParticipants(eventId);
-    }
-
-    async function refreshParticipants(eventId) {
-      const res  = await fetch(`/api/events/${eventId}/participants`);
-      const list = await res.json();
-      const body = document.getElementById('participants-body');
-
-      if (!list.length) {
-        body.innerHTML = '<p style="color:#718096;padding:20px 0">Brak zapisanych uczestnikow.</p>';
-        return;
-      }
-
-      body.innerHTML = list.map(p => {
-        const isPresent = p.status_obecnosci === 'OBECNY';
-        return `
-        <div class="participant-row" id="pr-${p.reg_id}">
-          <div class="participant-name">${p.imie_nazwisko}</div>
-          <div class="participant-email">${p.email}</div>
-          <span class="badge ${isPresent ? 'badge-green' : 'badge-gray'}">${p.status_obecnosci}</span>
-          ${!isPresent
-            ? `<button class="btn btn-success btn-sm" onclick="markPresent(${p.reg_id})">✓ Obecny (+${currentEventPunkty} pkt)</button>`
-            : `<button class="btn btn-warning btn-sm" onclick="markAbsent(${p.reg_id})">Cofnij</button>`}
-        </div>`;
-      }).join('');
-    }
-
-    async function markPresent(regId) {
-      const res = await fetch(`/api/registrations/${regId}/attend`, { method: 'POST' });
-      if (res.ok) await refreshParticipants(currentEventId);
-      else { const d = await res.json(); showAlert(d.error, 'error'); }
-    }
-
-    async function markAbsent(regId) {
-      const res = await fetch(`/api/registrations/${regId}/absent`, { method: 'POST' });
-      if (res.ok) await refreshParticipants(currentEventId);
-    }
-
-    function closeParticipantsModal() {
-      document.getElementById('modal-participants').style.display = 'none';
-      loadEvents();
-    }
-
-    async function openOpinions(eventId, eventName) {
-      document.getElementById('opinions-title').textContent = 'Opinie: ' + eventName;
-      document.getElementById('opinions-body').innerHTML = '<div class="loading">Ladowanie...</div>';
-      document.getElementById('modal-opinions').style.display = 'flex';
-
-      const res  = await fetch(`/api/events/${eventId}/opinions`);
-      const list = await res.json();
-      const body = document.getElementById('opinions-body');
-
-      if (!list.length) {
-        body.innerHTML = '<p class="no-opinions">Brak opinii dla tego wydarzenia.</p>';
-        return;
-      }
-
-      const avg = (list.reduce((s, o) => s + o.ocena, 0) / list.length).toFixed(1);
-      body.innerHTML = `
-        <div style="margin-bottom:16px;padding:12px 16px;background:#ebf8ff;border-radius:8px;color:#1a3a6b">
-          <strong>Srednia ocena: ${avg} / 5</strong> &nbsp;(${list.length} ${list.length === 1 ? 'opinia' : 'opinii'})
-        </div>
-        ${list.map(o => `
-          <div class="opinion-card">
-            <div class="opinion-author">${o.imie_nazwisko}</div>
-            <div class="opinion-stars">${'★'.repeat(o.ocena)}${'☆'.repeat(5 - o.ocena)}</div>
-            <div class="opinion-text">${o.tresc}</div>
-          </div>
-        `).join('')}`;
-    }
-
-    function closeOpinionsModal() {
-      document.getElementById('modal-opinions').style.display = 'none';
-    }
-
-    async function deleteEvent(id) {
-      if (!confirm('Usunac wydarzenie i wszystkich uczestnikow?')) return;
-      const res = await fetch(`/api/events/${id}`, { method: 'DELETE' });
-      if (res.ok) { showAlert('Wydarzenie usuniete.', 'success'); loadEvents(); }
-    }
-
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location = '/';
-    }
-
-    function showAlert(msg, type = 'success') {
-      const el = document.getElementById('alert');
-      el.textContent = msg;
-      el.className = `alert alert-${type}`;
-      setTimeout(() => el.className = 'alert hidden', 4000);
-    }
-
-    init();
-  </script>
+  <div id="modal-opinions" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px">
+    <div class="card" style="width:560px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
+      <button onclick="closeOpinionsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+      <h1 id="opinions-title">Opinie uczestnikow</h1>
+      <div id="opinions-body">Ladowanie...</div>
+    </div>
+  </div>
+</div>
+<script>
+var currentEventId=null,currentEventPunkty=10;
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+async function init(){
+  var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
+  var u=(await r.json()).user;
+  if(u.rola==='Student'){window.location='/events.html';return;}
+  if(u.rola==='Admin'){window.location='/admin.html';return;}
+  document.getElementById('nav-user').textContent=u.imie_nazwisko;
+  document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+  loadEvents();
+}
+async function loadEvents(){
+  var r=await fetch('/api/events?mine=1');var ev=await r.json();var el=document.getElementById('events-list');
+  if(!ev.length){el.innerHTML='<p style="color:#718096;padding:20px 0">Nie masz jeszcze zadnych wydarzen. <a href="create-event.html">Stworz pierwsze</a>.</p>';return;}
+  var today=new Date().toISOString().slice(0,10);
+  el.innerHTML=ev.map(function(e){var past=e.data_wydarzenia<today;return '<div class="event-card"><div class="event-info"><div class="event-name">'+e.nazwa_wydarzenia+'</div><div class="event-meta"><span class="badge badge-blue">'+(e.typ_wydarzenia||'Inne')+'</span> &#128197; '+e.data_wydarzenia+' | &#128205; '+e.miejsce+' | &#128101; '+e.zapisani+'/'+e.limit_miejsc+' | &#11088; '+(e.punkty||10)+' pkt</div></div><div class="event-actions"><button class="btn btn-secondary btn-sm" onclick="openParticipants('+e.id+',\''+e.nazwa_wydarzenia.replace(/'/g,"\\'")+'\','+( e.punkty||10)+')">Uczestnicy</button><button class="btn btn-secondary btn-sm" onclick="openOpinions('+e.id+',\''+e.nazwa_wydarzenia.replace(/'/g,"\\'")+'\')">Opinie</button>'+(past?'':'<button class="btn btn-danger btn-sm" onclick="deleteEvent('+e.id+')">Usun</button>')+'</div></div>';}).join('');
+}
+async function openParticipants(eventId,eventName,punkty){
+  currentEventId=eventId;currentEventPunkty=punkty||10;
+  document.getElementById('participants-title').textContent='Uczestnicy: '+eventName;
+  document.getElementById('participants-body').innerHTML='<div class="loading">Ladowanie...</div>';
+  document.getElementById('modal-participants').style.display='flex';
+  await refreshParticipants(eventId);
+}
+async function refreshParticipants(eventId){
+  var r=await fetch('/api/events/'+eventId+'/participants');var list=await r.json();var body=document.getElementById('participants-body');
+  if(!list.length){body.innerHTML='<p style="color:#718096;padding:20px 0">Brak zapisanych uczestnikow.</p>';return;}
+  body.innerHTML=list.map(function(p){var isP=p.status_obecnosci==='OBECNY';return '<div class="participant-row" id="pr-'+p.reg_id+'"><div class="participant-name">'+p.imie_nazwisko+'</div><div class="participant-email">'+p.email+'</div><span class="badge '+(isP?'badge-green':'badge-gray')+'">'+p.status_obecnosci+'</span>'+(isP?'<button class="btn btn-warning btn-sm" onclick="markAbsent('+p.reg_id+')">Cofnij</button>':'<button class="btn btn-success btn-sm" onclick="markPresent('+p.reg_id+')">&#10003; Obecny (+'+currentEventPunkty+' pkt)</button>')+'</div>';}).join('');
+}
+async function markPresent(regId){var r=await fetch('/api/registrations/'+regId+'/attend',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);else{var d=await r.json();showAlert(d.error,'error');}}
+async function markAbsent(regId){var r=await fetch('/api/registrations/'+regId+'/absent',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);}
+function closeParticipantsModal(){document.getElementById('modal-participants').style.display='none';loadEvents();}
+async function openOpinions(eventId,eventName){
+  document.getElementById('opinions-title').textContent='Opinie: '+eventName;
+  document.getElementById('opinions-body').innerHTML='<div class="loading">Ladowanie...</div>';
+  document.getElementById('modal-opinions').style.display='flex';
+  var r=await fetch('/api/events/'+eventId+'/opinions');var list=await r.json();var body=document.getElementById('opinions-body');
+  if(!list.length){body.innerHTML='<p class="no-opinions">Brak opinii.</p>';return;}
+  var avg=(list.reduce(function(s,o){return s+o.ocena;},0)/list.length).toFixed(1);
+  body.innerHTML='<div style="margin-bottom:16px;padding:12px 16px;background:#ebf8ff;border-radius:8px;color:#1a3a6b"><strong>Srednia: '+avg+' / 5</strong> ('+list.length+' opinii)</div>'+list.map(function(o){return '<div class="opinion-card"><div class="opinion-author">'+o.imie_nazwisko+'</div><div class="opinion-stars">'+'&#9733;'.repeat(o.ocena)+'&#9734;'.repeat(5-o.ocena)+'</div><div class="opinion-text">'+o.tresc+'</div></div>';}).join('');
+}
+function closeOpinionsModal(){document.getElementById('modal-opinions').style.display='none';}
+async function deleteEvent(id){if(!confirm('Usunac wydarzenie?'))return;var r=await fetch('/api/events/'+id,{method:'DELETE'});if(r.ok){showAlert('Usunieto.','success');loadEvents();}}
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
+function showAlert(msg,type){var el=document.getElementById('alert');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
+init();
+</script>
 </body>
 </html>

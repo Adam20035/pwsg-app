@@ -16,15 +16,33 @@
   </style>
 </head>
 <body>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <img src="logo.png" alt="WAT">
+    <div class="drawer-header-text"><div class="dtitle">WAT</div><div class="dsub">Platforma Wydarzen</div></div>
+    <button class="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <nav class="drawer-nav">
+    <a href="events.html" class="active"><span class="dicon">&#128197;</span> Lista wydarzen</a>
+    <a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>
+    <div class="drawer-divider"></div>
+    <a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a>
+    <a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a>
+    <a href="about.html"><span class="dicon">&#8505;</span> O aplikacji</a>
+    <div class="drawer-divider"></div>
+    <a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>
+  </nav>
+  <div class="drawer-user" id="drawer-user-info"></div>
+</div>
+
 <nav>
-  <span class="brand">
-    <img src="logo.png" class="nav-logo" alt="WAT">
-    <span>Platforma Wydarzen Studenckich</span>
-  </span>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
   <div class="nav-links">
     <span class="nav-user" id="nav-user"></span>
     <a href="gamification.html">&#127942; Ranking</a>
     <a href="#" onclick="logout()">Wyloguj</a>
+    <button class="hamburger" onclick="openDrawer()">&#9776;</button>
   </div>
 </nav>
 
@@ -63,41 +81,38 @@
 
 <script>
 var currentUser=null,allEvents=[],currentRegId=null,selectedStar=0;
-
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
 async function init(){
   try{
     var r=await fetch('/api/me');
     if(!r.ok){window.location='/';return;}
-    var d=await r.json();
-    currentUser=d.user;
+    var d=await r.json();currentUser=d.user;
     if(currentUser.rola==='Admin'){window.location='/admin.html';return;}
     if(currentUser.rola==='Organizator'){window.location='/organizer.html';return;}
     document.getElementById('nav-user').textContent=currentUser.imie_nazwisko;
+    document.getElementById('drawer-user-info').innerHTML='<strong>'+currentUser.imie_nazwisko+'</strong>'+currentUser.email;
     loadEvents();
-  }catch(e){
-    document.getElementById('events-body').innerHTML='<div class="alert alert-error">Blad polaczenia. Odswiez strone.</div>';
-  }
+  }catch(e){document.getElementById('events-body').innerHTML='<div class="alert alert-error">Blad polaczenia. Odswiez strone.</div>';}
 }
-
 async function loadEvents(){
   var c=document.getElementById('events-body');
   c.innerHTML='<div class="loading">Ladowanie...</div>';
   try{
     var r=await fetch('/api/events');
     if(!r.ok) throw new Error('HTTP '+r.status);
-    var ev=await r.json();
-    allEvents=ev;
+    var ev=await r.json();allEvents=ev;
     if(!ev.length){c.innerHTML='<p style="color:#718096;padding:20px 0">Brak dostepnych wydarzen.</p>';return;}
     var today=new Date().toISOString().slice(0,10);
     function fmt(d){var p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0];}
     var h='<div class="events-grid">';
     for(var i=0;i<ev.length;i++){
       var e=ev[i];
-      var full=e.zapisani>=e.limit_miejsc;
+      var full=e.zapisani>=e.limit_mejsc;
       var past=e.data_wydarzenia<today;
-      var isP=e.user_status==='OBECNY';
-      var isR=e.user_registered;
-      var pct=e.limit_miejsc>0?Math.round(e.zapisani/e.limit_miejsc*100):0;
+      var isP=e.user_status==='OBECNY',isR=e.user_registered;
+      var pct=e.limit_mejsc>0?Math.round(e.zapisani/e.limit_mejsc*100):0;
+      var full=e.zapisani>=e.limit_miejsc;pct=e.limit_miejsc>0?Math.round(e.zapisani/e.limit_miejsc*100):0;
       var fc=pct>=100?'full':pct>=75?'warn':'';
       var sb=past?'<span class="badge badge-gray">Zakonczone</span>':(full?'<span class="badge badge-orange">Kompletne</span>':'<span class="badge badge-green">Aktywne</span>');
       var rb=isP?'<span class="badge badge-green">&#10003; Obecny</span>':(isR?'<span class="badge badge-blue">Zapisany</span>':'');
@@ -110,82 +125,46 @@ async function loadEvents(){
       h+='<div class="ev-card">';
       h+='<div class="ev-card-header"><span class="badge badge-blue">'+(e.typ_wydarzenia||'Inne')+'</span>'+sb+'</div>';
       h+='<div class="ev-card-title">'+e.nazwa_wydarzenia+'</div>';
-      h+='<div class="ev-card-meta">';
-      h+='<div class="ev-card-meta-row">&#128197; '+fmt(e.data_wydarzenia)+'</div>';
+      h+='<div class="ev-card-meta"><div class="ev-card-meta-row">&#128197; '+fmt(e.data_wydarzenia)+'</div>';
       h+='<div class="ev-card-meta-row">&#128205; '+e.miejsce+'</div>';
-      h+='<div class="ev-card-meta-row">&#11088; <span class="ev-card-pts">'+(e.punkty||10)+' pkt</span> za obecnosc</div>';
-      h+='</div>';
+      h+='<div class="ev-card-meta-row">&#11088; <span class="ev-card-pts">'+(e.punkty||10)+' pkt</span> za obecnosc</div></div>';
       h+='<div class="ev-card-footer"><div class="ev-card-footer-left">';
       h+='<div class="spots-bar"><div class="spots-bar-fill '+fc+'" style="width:'+Math.min(pct,100)+'%"></div></div>';
       h+='<div class="spots-text">&#128101; '+e.zapisani+' / '+e.limit_miejsc+' miejsc</div>';
       h+=rb+'</div>'+ab+'</div></div>';
     }
-    h+='</div>';
-    c.innerHTML=h;
+    h+='</div>';c.innerHTML=h;
   }catch(err){
     c.innerHTML='<div class="alert alert-error">Blad: '+err.message+' <button class="btn btn-secondary btn-sm" onclick="loadEvents()" style="margin-left:8px">Sprobuj ponownie</button></div>';
   }
 }
-
 async function register(id){
-  try{
-    var r=await fetch('/api/events/'+id+'/register',{method:'POST'});
-    var d=await r.json();
-    var ev=allEvents.find(function(e){return e.id===id;});
-    var pts=ev?(ev.punkty||10):10;
-    showAlert(r.ok?('Zapisano! (+'+ pts+' pkt po potwierdzeniu obecnosci)'):d.error,r.ok?'success':'error');
-    if(r.ok) loadEvents();
-  }catch(e){showAlert('Blad polaczenia.','error');}
+  try{var r=await fetch('/api/events/'+id+'/register',{method:'POST'});var d=await r.json();var ev=allEvents.find(function(e){return e.id===id;});var pts=ev?(ev.punkty||10):10;showAlert(r.ok?('Zapisano! (+'+pts+' pkt)'):d.error,r.ok?'success':'error');if(r.ok)loadEvents();}catch(e){showAlert('Blad polaczenia.','error');}
 }
-
 async function unregister(id){
-  try{
-    var r=await fetch('/api/events/'+id+'/unregister',{method:'POST'});
-    var d=await r.json();
-    showAlert(r.ok?'Wypisano z wydarzenia.':d.error,r.ok?'success':'error');
-    if(r.ok) loadEvents();
-  }catch(e){showAlert('Blad polaczenia.','error');}
+  try{var r=await fetch('/api/events/'+id+'/unregister',{method:'POST'});var d=await r.json();showAlert(r.ok?'Wypisano.':d.error,r.ok?'success':'error');if(r.ok)loadEvents();}catch(e){showAlert('Blad polaczenia.','error');}
 }
-
 async function openOpinion(regId,eventName){
   currentRegId=regId;selectedStar=0;
   document.getElementById('opinion-event-label').textContent=eventName;
   document.getElementById('opinion-text').value='';
   document.getElementById('opinion-error').classList.add('hidden');
   renderStars(0);
-  try{
-    var r=await fetch('/api/opinions/by-reg/'+regId);
-    if(r.ok){var ex=await r.json();if(ex){selectedStar=ex.ocena;document.getElementById('opinion-text').value=ex.tresc;renderStars(ex.ocena);}}
-  }catch(e){}
+  try{var r=await fetch('/api/opinions/by-reg/'+regId);if(r.ok){var ex=await r.json();if(ex){selectedStar=ex.ocena;document.getElementById('opinion-text').value=ex.tresc;renderStars(ex.ocena);}}}catch(e){}
   document.getElementById('opinion-modal').style.display='flex';
 }
-
 function closeOpinionModal(){document.getElementById('opinion-modal').style.display='none';}
 function selectStar(v){selectedStar=v;renderStars(v);}
 function renderStars(v){document.querySelectorAll('.star-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.v)<=v);});}
-
 async function submitOpinion(){
   var tresc=document.getElementById('opinion-text').value.trim();
-  var errEl=document.getElementById('opinion-error');
-  errEl.classList.add('hidden');
-  if(!selectedStar){errEl.textContent='Wybierz ocene (1-5 gwiazdek).';errEl.classList.remove('hidden');return;}
+  var errEl=document.getElementById('opinion-error');errEl.classList.add('hidden');
+  if(!selectedStar){errEl.textContent='Wybierz ocene.';errEl.classList.remove('hidden');return;}
   if(!tresc){errEl.textContent='Wpisz komentarz.';errEl.classList.remove('hidden');return;}
-  try{
-    var r=await fetch('/api/opinions/'+currentRegId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ocena:selectedStar,tresc:tresc})});
-    var d=await r.json();
-    if(r.ok){closeOpinionModal();showAlert('Opinia zapisana!','success');}
-    else{errEl.textContent=d.error;errEl.classList.remove('hidden');}
-  }catch(e){errEl.textContent='Blad polaczenia.';errEl.classList.remove('hidden');}
+  try{var r=await fetch('/api/opinions/'+currentRegId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ocena:selectedStar,tresc:tresc})});var d=await r.json();if(r.ok){closeOpinionModal();showAlert('Opinia zapisana!','success');}else{errEl.textContent=d.error;errEl.classList.remove('hidden');}}catch(e){errEl.textContent='Blad polaczenia.';errEl.classList.remove('hidden');}
 }
-
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
-
-function showAlert(msg,type){
-  var el=document.getElementById('alert');
-  el.textContent=msg;el.className='alert alert-'+type;
-  setTimeout(function(){el.className='alert hidden';},4000);
-}
-
+function showAlert(msg,type){var el=document.getElementById('alert');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
 init();
 </script>
 </body>
