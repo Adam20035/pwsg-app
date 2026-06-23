@@ -113,7 +113,7 @@ app.post('/api/events/:id/checkin', requireRole('Student'), async (req, res) => 
     const regId = await rejestracje.create(userId, eventId);
     await rejestracje.setStatus(regId, 'OBECNY');
     await users.addPoints(userId, pts);
-    return res.json({ ok: true, msg: 'Zarejestrowano i oznaczono obecnosc!' });
+    return res.json({ ok: true, msg: 'Zarejestrowano i oznaczono obecnosc! +' + pts + ' pkt' });
   }
   if (reg.status_obecnosci === 'OBECNY') {
     return res.json({ ok: true, msg: 'Obecnosc juz potwierdzona.' });
@@ -186,26 +186,24 @@ app.get('/api/events/:id/opinions', requireRole('Organizator', 'Admin'), async (
 });
 
 // ── Admin ─────────────────────────────────────────────────────
-app.
-app.post('/api/events/:id/checkin', requireRole('Student'), async (req, res) => {
-  const eventId = parseInt(req.params.id);
-  const userId  = req.session.userId;
-  const event   = await wydarzenia.findById(eventId);
-  if (!event) return res.status(404).json({ error: 'Nie znaleziono wydarzenia.' });
-  const pts = event.punkty || 10;
-  let reg = await rejestracje.findByStudentEvent(userId, eventId);
-  if (!reg) {
-    if (await rejestracje.countByEvent(eventId) >= event.limit_miejsc)
-      return res.status(400).json({ error: 'Brak wolnych miejsc na tym wydarzeniu.' });
-    const regId = await rejestracje.create(userId, eventId);
-    await rejestracje.setStatus(regId, 'OBECNY');
-    await users.addPoints(userId, pts);
-    return res.json({ ok: true, msg: 'Zarejestrowano i oznaczono obecnosc!' });
-  }
-  if (reg.status_obecnosci === 'OBECNY') {
-    return res.json({ ok: true, msg: 'Obecnosc juz potwierdzona.' });
-  }
-  await rejestracje.setStatus(reg.id, 'OBECNY');
-  await users.addPoints(userId, pts);
-  res.json({ ok: true, msg: 'Obecnosc potwierdzona! +' + pts + ' pkt' });
+app.get('/api/admin/users', requireRole('Admin'), async (req, res) => res.json(await users.getAll()));
+
+app.post('/api/admin/users/:id/toggle', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  if (uid === req.session.userId) return res.status(400).json({ error: 'Nie mozesz zablokowac wlasnego konta.' });
+  await users.toggle(uid);
+  res.json({ ok: true });
 });
+
+app.delete('/api/admin/users/:id', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  if (uid === req.session.userId) return res.status(400).json({ error: 'Nie mozesz usunac wlasnego konta.' });
+  await users.delete(uid);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/events', requireRole('Admin'), async (req, res) => res.json(await wydarzenia.getAllAdmin()));
+
+// ── Start ─────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`PWSG dziala na http://localhost:${PORT}`));
