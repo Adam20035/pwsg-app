@@ -135,6 +135,14 @@ const users = {
     if (!snap.exists) return;
     await ref.update({ active: snap.data().active ? 0 : 1 });
   },
+  setVerified: async (id) => {
+    await ready;
+    await COL.users.doc(String(id)).update({ email_verified: true, verification_token: null });
+  },
+  setVerificationToken: async (id, token) => {
+    await ready;
+    await COL.users.doc(String(id)).update({ verification_token: token });
+  },
   setRole: async (id, role) => {
     await ready;
     await COL.users.doc(String(id)).update({ rola: role });

@@ -142,6 +142,7 @@ async function loadUsers() {
       + '<td><div class="actions-wrap">'
         + sel
         + '<button class="btn btn-sm btn-primary" style="padding:4px 10px" '+dis+' onclick="changeRole('+u.id+')">Zmien</button>'
+        + (u.email_verified===false ? '<button class="btn btn-sm" style="background:#38a169;color:#fff" onclick="verifyUser('+u.id+')">Weryfikuj email</button>' : '')
         + '<button class="btn btn-warning btn-sm" '+dis+' onclick="toggleUser('+u.id+')">'+toggleLabel+'</button>'
         + '<button class="btn btn-danger btn-sm" '+dis+' onclick="deleteUser('+u.id+')">Usun</button>'
       + '</div></td>'
@@ -163,6 +164,13 @@ async function changeRole(id) {
   var d = await r.json();
   if (r.ok) { showAlert('Rola zmieniona na '+sel.value+'.','success'); loadUsers(); }
   else showAlert(d.error, 'error');
+}
+
+async function verifyUser(id) {
+  if (!confirm('Ręcznie zweryfikować email tego użytkownika?')) return;
+  const r = await fetch('/api/admin/users/' + id + '/verify', { method: 'POST' });
+  if (r.ok) { alert('Konto zweryfikowane!'); loadUsers(); }
+  else alert('Błąd.');
 }
 
 async function toggleUser(id) {

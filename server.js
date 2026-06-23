@@ -260,6 +260,33 @@ app.delete('/api/admin/users/:id', requireRole('Admin'), async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Admin — verify user manually ─────────────────────────────
+app.post('/api/admin/users/:id/verify', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  await users.setVerified(uid);
+  res.json({ ok: true });
+});
+
+// ── Resend verification email ─────────────────────────────────
+app.post('/api/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Brak emaila.' });
+  const user = await users.findByEmail(email);
+  if (!user) return res.status(404).json({ error: 'Nie znaleziono konta.' });
+  if (user.email_verified !== false) return res.json({ ok: true, msg: 'Konto juz zweryfikowane.' });
+  const crypto = require('crypto');
+  const token = crypto.randomBytes(32).toString('hex');
+  await users.setVerificationToken(user.id, token);
+  const baseUrl = req.protocol + '://' + req.get('host');
+  try {
+    await sendVerificationEmail(email, token, baseUrl);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('SMTP error:', e);
+    res.status(500).json({ error: 'Blad wysylania emaila: ' + e.message });
+  }
+});
+
 // ── Admin — events ────────────────────────────────────────────
 app.get('/api/admin/events', requireRole('Admin'), async (req, res) => res.json(await wydarzenia.getAllAdmin()));
 
