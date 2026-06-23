@@ -91,53 +91,60 @@
       }
 
       const today = new Date().toISOString().slice(0, 10);
-      container.innerHTML = `
-        <div class="table-responsive">
-        <table>
-          <thead><tr>
-            <th>Nazwa</th><th>Typ</th><th>Data</th><th>Miejsce</th>
-            <th>Miejsca</th><th>Pkt</th><th>Status</th><th>Akcja</th>
-          </tr></thead>
-          <tbody>
-            ${events.map(e => {
-              const full = e.zapisani >= e.limit_miejsc;
-              const past = e.data_wydarzenia < today;
-              const isPresent = e.user_status === 'OBECNY';
-              const isRegistered = e.user_registered;
+      const fmt = d => { const [y,m,dd] = d.split('-'); return `${dd}.${m}.${y}`; };
 
-              const regBadge = isPresent
-                ? '<span class="badge badge-green">Obecny</span>'
-                : (isRegistered ? '<span class="badge badge-blue">Zapisany</span>' : '');
+      container.innerHTML = `<div class="events-grid">${events.map(e => {
+        const full = e.zapisani >= e.limit_miejsc;
+        const past = e.data_wydarzenia < today;
+        const isPresent = e.user_status === 'OBECNY';
+        const isRegistered = e.user_registered;
+        const pct = Math.round((e.zapisani / e.limit_miejsc) * 100);
+        const fillClass = pct >= 100 ? 'full' : pct >= 75 ? 'warn' : '';
 
-              let actionBtn = '';
-              if (past) {
-                actionBtn = isPresent
-                  ? `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`
-                  : '<span class="badge badge-gray">Zakonczone</span>';
-              } else if (isPresent) {
-                actionBtn = `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`;
-              } else if (isRegistered) {
-                actionBtn = `<button class="btn btn-warning btn-sm" onclick="unregister(${e.id})">Wypisz sie</button>`;
-              } else if (full) {
-                actionBtn = '<span class="badge badge-gray">Brak miejsc</span>';
-              } else {
-                actionBtn = `<button class="btn btn-primary btn-sm" onclick="register(${e.id})">Zapisz sie</button>`;
-              }
+        const statusBadge = past
+          ? '<span class="badge badge-gray">Zakonczone</span>'
+          : full ? '<span class="badge badge-orange">Kompletne</span>'
+          : '<span class="badge badge-green">Aktywne</span>';
 
-              return `<tr>
-                <td><strong>${e.nazwa_wydarzenia}</strong> ${regBadge}</td>
-                <td><span class="badge badge-blue">${e.typ_wydarzenia||'Inne'}</span></td>
-                <td>${e.data_wydarzenia}</td>
-                <td>${e.miejsce}</td>
-                <td>${e.zapisani}/${e.limit_miejsc}</td>
-                <td><strong>${e.punkty||10}</strong></td>
-                <td><span class="badge ${past ? 'badge-gray' : full ? 'badge-orange' : 'badge-green'}">${past ? 'Zakonczone' : full ? 'Kompletne' : 'Aktywne'}</span></td>
-                <td>${actionBtn}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-        </div>`;
+        const regBadge = isPresent
+          ? '<span class="badge badge-green">✓ Obecny</span>'
+          : isRegistered ? '<span class="badge badge-blue">Zapisany</span>' : '';
+
+        let actionBtn = '';
+        if (past) {
+          actionBtn = isPresent
+            ? `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`
+            : '';
+        } else if (isPresent) {
+          actionBtn = `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`;
+        } else if (isRegistered) {
+          actionBtn = `<button class="btn btn-warning btn-sm" onclick="unregister(${e.id})">Wypisz sie</button>`;
+        } else if (!full) {
+          actionBtn = `<button class="btn btn-primary btn-sm" onclick="register(${e.id})">Zapisz sie</button>`;
+        }
+
+        return `
+          <div class="ev-card">
+            <div class="ev-card-header">
+              <span class="badge badge-blue">${e.typ_wydarzenia||'Inne'}</span>
+              ${statusBadge}
+            </div>
+            <div class="ev-card-title">${e.nazwa_wydarzenia}</div>
+            <div class="ev-card-meta">
+              <div class="ev-card-meta-row">📅 ${fmt(e.data_wydarzenia)}</div>
+              <div class="ev-card-meta-row">📍 ${e.miejsce}</div>
+              <div class="ev-card-meta-row">⭐ <span class="ev-card-pts">${e.punkty||10} pkt</span> za obecnosc</div>
+            </div>
+            <div class="ev-card-footer">
+              <div class="ev-card-footer-left">
+                <div class="spots-bar"><div class="spots-bar-fill ${fillClass}" style="width:${Math.min(pct,100)}%"></div></div>
+                <div class="spots-text">👥 ${e.zapisani} / ${e.limit_miejsc} miejsc</div>
+                ${regBadge}
+              </div>
+              ${actionBtn}
+            </div>
+          </div>`;
+      }).join('')}</div>`;
     }
 
     async function register(id) {
@@ -208,26 +215,4 @@
       const data = await res.json();
       if (res.ok) {
         closeOpinionModal();
-        showAlert('Opinia zapisana!', 'success');
-      } else {
-        errEl.textContent = data.error;
-        errEl.classList.remove('hidden');
-      }
-    }
-
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location = '/';
-    }
-
-    function showAlert(msg, type = 'success') {
-      const el = document.getElementById('alert');
-      el.textContent = msg;
-      el.className = `alert alert-${type}`;
-      setTimeout(() => el.className = 'alert hidden', 4000);
-    }
-
-    init();
-  </script>
-</body>
-</html>
+        showAlert('Opinia zapisana
