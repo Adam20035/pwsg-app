@@ -3,216 +3,190 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wydarzenia – Platforma Wydarzen Studenckich</title>
+  <title>Wydarzenia - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    .star-btn { background:none; border:none; font-size:1.6rem; cursor:pointer; color:#cbd5e0; padding:0 2px; transition:color .1s; }
-    .star-btn.active, .star-btn:hover { color:#f6ad55; }
-    .opinion-stars-row { display:flex; gap:2px; margin:8px 0 16px; }
-    .opinion-textarea { width:100%; box-sizing:border-box; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.95rem; resize:vertical; min-height:80px; }
-    .opinion-textarea:focus { outline:none; border-color:#2b6cb0; box-shadow:0 0 0 3px rgba(43,108,176,0.1); }
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:100; padding:16px; }
+    .star-btn{background:none;border:none;font-size:1.6rem;cursor:pointer;color:#cbd5e0;padding:0 2px;transition:color .1s}
+    .star-btn.active,.star-btn:hover{color:#f6ad55}
+    .opinion-stars-row{display:flex;gap:2px;margin:8px 0 16px}
+    .opinion-textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.95rem;resize:vertical;min-height:80px}
+    .opinion-textarea:focus{outline:none;border-color:#2b6cb0;box-shadow:0 0 0 3px rgba(43,108,176,.1)}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px}
   </style>
 </head>
 <body>
-  <nav>
-    <span class="brand">
-      <img src="logo.png" class="nav-logo" alt="WAT">
-      <span>Platforma Wydarzen Studenckich</span>
-    </span>
-    <div class="nav-links">
-      <span class="nav-user" id="nav-user"></span>
-      <a href="gamification.html">🏆 Ranking</a>
-      <a href="#" onclick="logout()">Wyloguj</a>
-    </div>
-  </nav>
+<nav>
+  <span class="brand">
+    <img src="logo.png" class="nav-logo" alt="WAT">
+    <span>Platforma Wydarzen Studenckich</span>
+  </span>
+  <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
+    <a href="gamification.html">&#127942; Ranking</a>
+    <a href="#" onclick="logout()">Wyloguj</a>
+  </div>
+</nav>
 
-  <div class="container wide">
-    <div class="card">
-      <h1>Lista wydarzen</h1>
-      <div id="alert" class="alert hidden"></div>
-      <div id="events-body" class="loading">Ladowanie...</div>
+<div class="container wide">
+  <div class="card">
+    <h1>Lista wydarzen</h1>
+    <div id="alert" class="alert hidden"></div>
+    <div id="events-body" class="loading">Ladowanie...</div>
+  </div>
+</div>
+
+<div id="opinion-modal" class="modal-overlay">
+  <div class="card" style="width:480px;max-width:100%;position:relative">
+    <button onclick="closeOpinionModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+    <h1 style="margin-bottom:4px">Twoja opinia</h1>
+    <div id="opinion-event-label" style="color:#718096;font-size:.9rem;margin-bottom:16px"></div>
+    <label style="font-weight:600">Ocena</label>
+    <div class="opinion-stars-row">
+      <button class="star-btn" data-v="1" onclick="selectStar(1)">&#9733;</button>
+      <button class="star-btn" data-v="2" onclick="selectStar(2)">&#9733;</button>
+      <button class="star-btn" data-v="3" onclick="selectStar(3)">&#9733;</button>
+      <button class="star-btn" data-v="4" onclick="selectStar(4)">&#9733;</button>
+      <button class="star-btn" data-v="5" onclick="selectStar(5)">&#9733;</button>
+    </div>
+    <div class="form-group">
+      <label>Komentarz</label>
+      <textarea id="opinion-text" class="opinion-textarea" placeholder="Co sadzisz o tym wydarzeniu?"></textarea>
+    </div>
+    <div id="opinion-error" class="alert alert-error hidden" style="margin-bottom:12px"></div>
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="closeOpinionModal()">Anuluj</button>
+      <button class="btn btn-primary" onclick="submitOpinion()">Zapisz opinie</button>
     </div>
   </div>
+</div>
 
-  <!-- Opinion modal -->
-  <div id="opinion-modal" class="modal-overlay">
-    <div class="card" style="width:480px;max-width:100%;position:relative">
-      <button onclick="closeOpinionModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">✕</button>
-      <h1 style="margin-bottom:4px">Twoja opinia</h1>
-      <div id="opinion-event-label" style="color:#718096;font-size:0.9rem;margin-bottom:16px"></div>
-      <label style="font-weight:600">Ocena</label>
-      <div class="opinion-stars-row" id="opinion-stars">
-        <button class="star-btn" data-v="1" onclick="selectStar(1)">★</button>
-        <button class="star-btn" data-v="2" onclick="selectStar(2)">★</button>
-        <button class="star-btn" data-v="3" onclick="selectStar(3)">★</button>
-        <button class="star-btn" data-v="4" onclick="selectStar(4)">★</button>
-        <button class="star-btn" data-v="5" onclick="selectStar(5)">★</button>
-      </div>
-      <div class="form-group">
-        <label>Komentarz</label>
-        <textarea id="opinion-text" class="opinion-textarea" placeholder="Co sadzisz o tym wydarzeniu?"></textarea>
-      </div>
-      <div id="opinion-error" class="alert alert-error hidden" style="margin-bottom:12px"></div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="closeOpinionModal()">Anuluj</button>
-        <button class="btn btn-primary" onclick="submitOpinion()">Zapisz opinie</button>
-      </div>
-    </div>
-  </div>
+<script>
+var currentUser=null,allEvents=[],currentRegId=null,selectedStar=0;
 
-  <script>
-    let currentUser = null;
-    let allEvents = [];
-    let currentRegId = null;
-    let selectedStar = 0;
+async function init(){
+  try{
+    var r=await fetch('/api/me');
+    if(!r.ok){window.location='/';return;}
+    var d=await r.json();
+    currentUser=d.user;
+    if(currentUser.rola==='Admin'){window.location='/admin.html';return;}
+    if(currentUser.rola==='Organizator'){window.location='/organizer.html';return;}
+    document.getElementById('nav-user').textContent=currentUser.imie_nazwisko;
+    loadEvents();
+  }catch(e){
+    document.getElementById('events-body').innerHTML='<div class="alert alert-error">Blad polaczenia. Odswiez strone.</div>';
+  }
+}
 
-    async function init() {
-      const res = await fetch('/api/me');
-      if (!res.ok) { window.location = '/'; return; }
-      const data = await res.json();
-      currentUser = data.user;
-      if (currentUser.rola === 'Admin')       { window.location = '/admin.html'; return; }
-      if (currentUser.rola === 'Organizator') { window.location = '/organizer.html'; return; }
-      document.getElementById('nav-user').textContent = currentUser.imie_nazwisko;
-      loadEvents();
+async function loadEvents(){
+  var c=document.getElementById('events-body');
+  c.innerHTML='<div class="loading">Ladowanie...</div>';
+  try{
+    var r=await fetch('/api/events');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var ev=await r.json();
+    allEvents=ev;
+    if(!ev.length){c.innerHTML='<p style="color:#718096;padding:20px 0">Brak dostepnych wydarzen.</p>';return;}
+    var today=new Date().toISOString().slice(0,10);
+    function fmt(d){var p=d.split('-');return p[2]+'.'+p[1]+'.'+p[0];}
+    var h='<div class="events-grid">';
+    for(var i=0;i<ev.length;i++){
+      var e=ev[i];
+      var full=e.zapisani>=e.limit_miejsc;
+      var past=e.data_wydarzenia<today;
+      var isP=e.user_status==='OBECNY';
+      var isR=e.user_registered;
+      var pct=e.limit_miejsc>0?Math.round(e.zapisani/e.limit_miejsc*100):0;
+      var fc=pct>=100?'full':pct>=75?'warn':'';
+      var sb=past?'<span class="badge badge-gray">Zakonczone</span>':(full?'<span class="badge badge-orange">Kompletne</span>':'<span class="badge badge-green">Aktywne</span>');
+      var rb=isP?'<span class="badge badge-green">&#10003; Obecny</span>':(isR?'<span class="badge badge-blue">Zapisany</span>':'');
+      var sn=e.nazwa_wydarzenia.replace(/'/g,"\\'");
+      var ab='';
+      if(past&&isP) ab='<button class="btn btn-secondary btn-sm" onclick="openOpinion('+e.user_reg_id+',\''+sn+'\')">&#11088; Opinia</button>';
+      else if(!past&&isP) ab='<button class="btn btn-secondary btn-sm" onclick="openOpinion('+e.user_reg_id+',\''+sn+'\')">&#11088; Opinia</button>';
+      else if(!past&&isR) ab='<button class="btn btn-warning btn-sm" onclick="unregister('+e.id+')">Wypisz sie</button>';
+      else if(!past&&!full) ab='<button class="btn btn-primary btn-sm" onclick="register('+e.id+')">Zapisz sie</button>';
+      h+='<div class="ev-card">';
+      h+='<div class="ev-card-header"><span class="badge badge-blue">'+(e.typ_wydarzenia||'Inne')+'</span>'+sb+'</div>';
+      h+='<div class="ev-card-title">'+e.nazwa_wydarzenia+'</div>';
+      h+='<div class="ev-card-meta">';
+      h+='<div class="ev-card-meta-row">&#128197; '+fmt(e.data_wydarzenia)+'</div>';
+      h+='<div class="ev-card-meta-row">&#128205; '+e.miejsce+'</div>';
+      h+='<div class="ev-card-meta-row">&#11088; <span class="ev-card-pts">'+(e.punkty||10)+' pkt</span> za obecnosc</div>';
+      h+='</div>';
+      h+='<div class="ev-card-footer"><div class="ev-card-footer-left">';
+      h+='<div class="spots-bar"><div class="spots-bar-fill '+fc+'" style="width:'+Math.min(pct,100)+'%"></div></div>';
+      h+='<div class="spots-text">&#128101; '+e.zapisani+' / '+e.limit_miejsc+' miejsc</div>';
+      h+=rb+'</div>'+ab+'</div></div>';
     }
+    h+='</div>';
+    c.innerHTML=h;
+  }catch(err){
+    c.innerHTML='<div class="alert alert-error">Blad: '+err.message+' <button class="btn btn-secondary btn-sm" onclick="loadEvents()" style="margin-left:8px">Sprobuj ponownie</button></div>';
+  }
+}
 
-    async function loadEvents() {
-      const res = await fetch('/api/events');
-      const events = await res.json();
-      allEvents = events;
-      const container = document.getElementById('events-body');
+async function register(id){
+  try{
+    var r=await fetch('/api/events/'+id+'/register',{method:'POST'});
+    var d=await r.json();
+    var ev=allEvents.find(function(e){return e.id===id;});
+    var pts=ev?(ev.punkty||10):10;
+    showAlert(r.ok?('Zapisano! (+'+ pts+' pkt po potwierdzeniu obecnosci)'):d.error,r.ok?'success':'error');
+    if(r.ok) loadEvents();
+  }catch(e){showAlert('Blad polaczenia.','error');}
+}
 
-      if (!events.length) {
-        container.innerHTML = '<p style="color:#718096;padding:20px 0">Brak dostepnych wydarzen.</p>';
-        return;
-      }
+async function unregister(id){
+  try{
+    var r=await fetch('/api/events/'+id+'/unregister',{method:'POST'});
+    var d=await r.json();
+    showAlert(r.ok?'Wypisano z wydarzenia.':d.error,r.ok?'success':'error');
+    if(r.ok) loadEvents();
+  }catch(e){showAlert('Blad polaczenia.','error');}
+}
 
-      const today = new Date().toISOString().slice(0, 10);
-      const fmt = d => { const [y,m,dd] = d.split('-'); return `${dd}.${m}.${y}`; };
+async function openOpinion(regId,eventName){
+  currentRegId=regId;selectedStar=0;
+  document.getElementById('opinion-event-label').textContent=eventName;
+  document.getElementById('opinion-text').value='';
+  document.getElementById('opinion-error').classList.add('hidden');
+  renderStars(0);
+  try{
+    var r=await fetch('/api/opinions/by-reg/'+regId);
+    if(r.ok){var ex=await r.json();if(ex){selectedStar=ex.ocena;document.getElementById('opinion-text').value=ex.tresc;renderStars(ex.ocena);}}
+  }catch(e){}
+  document.getElementById('opinion-modal').style.display='flex';
+}
 
-      container.innerHTML = `<div class="events-grid">${events.map(e => {
-        const full = e.zapisani >= e.limit_miejsc;
-        const past = e.data_wydarzenia < today;
-        const isPresent = e.user_status === 'OBECNY';
-        const isRegistered = e.user_registered;
-        const pct = Math.round((e.zapisani / e.limit_miejsc) * 100);
-        const fillClass = pct >= 100 ? 'full' : pct >= 75 ? 'warn' : '';
+function closeOpinionModal(){document.getElementById('opinion-modal').style.display='none';}
+function selectStar(v){selectedStar=v;renderStars(v);}
+function renderStars(v){document.querySelectorAll('.star-btn').forEach(function(b){b.classList.toggle('active',parseInt(b.dataset.v)<=v);});}
 
-        const statusBadge = past
-          ? '<span class="badge badge-gray">Zakonczone</span>'
-          : full ? '<span class="badge badge-orange">Kompletne</span>'
-          : '<span class="badge badge-green">Aktywne</span>';
+async function submitOpinion(){
+  var tresc=document.getElementById('opinion-text').value.trim();
+  var errEl=document.getElementById('opinion-error');
+  errEl.classList.add('hidden');
+  if(!selectedStar){errEl.textContent='Wybierz ocene (1-5 gwiazdek).';errEl.classList.remove('hidden');return;}
+  if(!tresc){errEl.textContent='Wpisz komentarz.';errEl.classList.remove('hidden');return;}
+  try{
+    var r=await fetch('/api/opinions/'+currentRegId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ocena:selectedStar,tresc:tresc})});
+    var d=await r.json();
+    if(r.ok){closeOpinionModal();showAlert('Opinia zapisana!','success');}
+    else{errEl.textContent=d.error;errEl.classList.remove('hidden');}
+  }catch(e){errEl.textContent='Blad polaczenia.';errEl.classList.remove('hidden');}
+}
 
-        const regBadge = isPresent
-          ? '<span class="badge badge-green">✓ Obecny</span>'
-          : isRegistered ? '<span class="badge badge-blue">Zapisany</span>' : '';
+async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
 
-        let actionBtn = '';
-        if (past) {
-          actionBtn = isPresent
-            ? `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`
-            : '';
-        } else if (isPresent) {
-          actionBtn = `<button class="btn btn-secondary btn-sm" onclick="openOpinion(${e.user_reg_id}, '${e.nazwa_wydarzenia.replace(/'/g,"\\'")}')">⭐ Opinia</button>`;
-        } else if (isRegistered) {
-          actionBtn = `<button class="btn btn-warning btn-sm" onclick="unregister(${e.id})">Wypisz sie</button>`;
-        } else if (!full) {
-          actionBtn = `<button class="btn btn-primary btn-sm" onclick="register(${e.id})">Zapisz sie</button>`;
-        }
+function showAlert(msg,type){
+  var el=document.getElementById('alert');
+  el.textContent=msg;el.className='alert alert-'+type;
+  setTimeout(function(){el.className='alert hidden';},4000);
+}
 
-        return `
-          <div class="ev-card">
-            <div class="ev-card-header">
-              <span class="badge badge-blue">${e.typ_wydarzenia||'Inne'}</span>
-              ${statusBadge}
-            </div>
-            <div class="ev-card-title">${e.nazwa_wydarzenia}</div>
-            <div class="ev-card-meta">
-              <div class="ev-card-meta-row">📅 ${fmt(e.data_wydarzenia)}</div>
-              <div class="ev-card-meta-row">📍 ${e.miejsce}</div>
-              <div class="ev-card-meta-row">⭐ <span class="ev-card-pts">${e.punkty||10} pkt</span> za obecnosc</div>
-            </div>
-            <div class="ev-card-footer">
-              <div class="ev-card-footer-left">
-                <div class="spots-bar"><div class="spots-bar-fill ${fillClass}" style="width:${Math.min(pct,100)}%"></div></div>
-                <div class="spots-text">👥 ${e.zapisani} / ${e.limit_miejsc} miejsc</div>
-                ${regBadge}
-              </div>
-              ${actionBtn}
-            </div>
-          </div>`;
-      }).join('')}</div>`;
-    }
-
-    async function register(id) {
-      const res = await fetch(`/api/events/${id}/register`, { method: 'POST' });
-      const data = await res.json();
-      const evt = allEvents.find(e => e.id === id);
-      const pts = evt ? (evt.punkty || 10) : 10;
-      showAlert(res.ok ? `Zapisano! (+${pts} pkt po potwierdzeniu obecnosci)` : data.error, res.ok ? 'success' : 'error');
-      if (res.ok) loadEvents();
-    }
-
-    async function unregister(id) {
-      const res = await fetch(`/api/events/${id}/unregister`, { method: 'POST' });
-      const data = await res.json();
-      showAlert(res.ok ? 'Wypisano z wydarzenia.' : data.error, res.ok ? 'success' : 'error');
-      if (res.ok) loadEvents();
-    }
-
-    async function openOpinion(regId, eventName) {
-      currentRegId = regId;
-      selectedStar = 0;
-      document.getElementById('opinion-event-label').textContent = eventName;
-      document.getElementById('opinion-text').value = '';
-      document.getElementById('opinion-error').classList.add('hidden');
-      renderStars(0);
-
-      const res = await fetch(`/api/opinions/by-reg/${regId}`);
-      if (res.ok) {
-        const existing = await res.json();
-        if (existing) {
-          selectedStar = existing.ocena;
-          document.getElementById('opinion-text').value = existing.tresc;
-          renderStars(existing.ocena);
-        }
-      }
-
-      document.getElementById('opinion-modal').style.display = 'flex';
-    }
-
-    function closeOpinionModal() {
-      document.getElementById('opinion-modal').style.display = 'none';
-    }
-
-    function selectStar(val) {
-      selectedStar = val;
-      renderStars(val);
-    }
-
-    function renderStars(val) {
-      document.querySelectorAll('.star-btn').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.dataset.v) <= val);
-      });
-    }
-
-    async function submitOpinion() {
-      const tresc = document.getElementById('opinion-text').value.trim();
-      const errEl = document.getElementById('opinion-error');
-      errEl.classList.add('hidden');
-
-      if (!selectedStar) { errEl.textContent = 'Wybierz ocene (1-5 gwiazdek).'; errEl.classList.remove('hidden'); return; }
-      if (!tresc)        { errEl.textContent = 'Wpisz komentarz.';               errEl.classList.remove('hidden'); return; }
-
-      const res = await fetch(`/api/opinions/${currentRegId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ocena: selectedStar, tresc })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        closeOpinionModal();
-        showAlert('Opinia zapisana
+init();
+</script>
+</body>
+</html>
