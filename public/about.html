@@ -91,8 +91,6 @@ async function init(){
   try{
     var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
     var u=(await r.json()).user;
-    var homeUrl=u.rola==='Admin'?'/admin.html':u.rola==='Organizator'?'/organizer.html':'/events.html';
-    document.getElementById('nav-home').href=homeUrl;
     document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
     document.getElementById('nav-user').textContent=u.imie_nazwisko;
     var studentLinks='<a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a><a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>';
