@@ -16,10 +16,13 @@
         background:#e53e3e; color:#fff; font-size:.65rem; font-weight:700;
         min-width:18px; height:18px; border-radius:9px; text-align:center;
         line-height:18px; padding:0 4px; }
-      #notif-dropdown { display:none; position:absolute; top:calc(100% + 10px); right:0;
-        width:340px; max-height:420px; overflow-y:auto; background:#fff;
-        border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12);
+      #notif-dropdown { display:none; position:fixed; top:60px; right:8px; left:8px;
+        max-height:70vh; overflow-y:auto; background:#fff;
+        border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.18);
         z-index:9999; }
+      @media(min-width:520px){
+        #notif-dropdown { position:absolute; top:calc(100% + 10px); left:auto; right:0; width:340px; max-height:420px; }
+      }
       #notif-dropdown-wrap { position:relative; }
       .notif-header { display:flex; justify-content:space-between; align-items:center;
         padding:12px 16px; border-bottom:1px solid #e2e8f0; }
