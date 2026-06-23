@@ -5,12 +5,23 @@
   <title>Panel Organizatora - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .opinion-card{background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:10px}
     .opinion-stars{color:#f6ad55;font-size:1.1rem;margin-bottom:4px}
     .opinion-author{font-weight:600;font-size:.9rem;color:#2d3748}
     .opinion-text{color:#4a5568;font-size:.9rem;margin-top:4px}
     .no-opinions{color:#718096;padding:16px 0}
+    .chart-wrap{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px}
+    .chart-title{font-weight:700;color:#1a3a6b;margin-bottom:12px;font-size:.95rem}
+    .modal-box{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px}
+    .modal-inner{background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:32px 28px;width:620px;max-width:100%;max-height:90vh;overflow-y:auto;position:relative}
+    .modal-inner.narrow{width:400px}
+    .modal-close{position:absolute;top:14px;right:18px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096}
+    #qr-canvas canvas{margin:0 auto}
+    .csv-btn{background:#2b6cb0;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:14px}
+    .csv-btn:hover{background:#1a3a6b}
   </style>
 </head>
 <body>
@@ -46,27 +57,78 @@
   <div class="card">
     <h1>Panel Organizatora</h1>
     <div id="alert" class="alert hidden"></div>
+    <div class="chart-wrap" id="chart-section" style="display:none">
+      <div class="chart-title">&#128202; Frekwencja na wydarzeniach</div>
+      <canvas id="attendance-chart" style="max-height:200px"></canvas>
+    </div>
     <div id="events-list" class="loading">Ladowanie...</div>
   </div>
-  <div id="modal-participants" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px">
-    <div class="card" style="width:620px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
-      <button onclick="closeParticipantsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+
+  <!-- Modal: Uczestnicy -->
+  <div class="modal-box" id="modal-participants">
+    <div class="modal-inner">
+      <button class="modal-close" onclick="closeParticipantsModal()">&#10005;</button>
       <h1 id="participants-title">Uczestnicy</h1>
+      <button class="csv-btn" onclick="exportCSV()">&#11015; Eksportuj CSV</button>
       <div id="participants-body" class="loading">Ladowanie...</div>
     </div>
   </div>
-  <div id="modal-opinions" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px">
-    <div class="card" style="width:560px;max-width:100%;max-height:80vh;overflow-y:auto;position:relative">
-      <button onclick="closeOpinionsModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+
+  <!-- Modal: Opinie -->
+  <div class="modal-box" id="modal-opinions">
+    <div class="modal-inner" style="width:560px">
+      <button class="modal-close" onclick="closeOpinionsModal()">&#10005;</button>
       <h1 id="opinions-title">Opinie uczestnikow</h1>
       <div id="opinions-body">Ladowanie...</div>
     </div>
   </div>
+
+  <!-- Modal: Edycja -->
+  <div class="modal-box" id="modal-edit">
+    <div class="modal-inner" style="width:540px">
+      <button class="modal-close" onclick="closeEditModal()">&#10005;</button>
+      <h1>Edytuj wydarzenie</h1>
+      <div class="form-group"><label>Nazwa wydarzenia</label><input type="text" id="edit-nazwa" class="input" placeholder="np. Hackathon WAT"></div>
+      <div class="form-group"><label>Data</label><input type="date" id="edit-data" class="input"></div>
+      <div class="form-group"><label>Miejsce</label><input type="text" id="edit-miejsce" class="input" placeholder="np. Sala 301"></div>
+      <div class="form-group"><label>Limit miejsc</label><input type="number" id="edit-limit" class="input" min="1" placeholder="np. 50"></div>
+      <div class="form-group"><label>Typ</label>
+        <select id="edit-typ" class="input">
+          <option value="Warsztaty">Warsztaty</option>
+          <option value="Wyklad">Wyklad</option>
+          <option value="Konferencja">Konferencja</option>
+          <option value="Sportowe">Sportowe</option>
+          <option value="Kulturalne">Kulturalne</option>
+          <option value="Inne">Inne</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Punkty za obecnosc</label><input type="number" id="edit-punkty" class="input" min="1" placeholder="np. 10"></div>
+      <div id="edit-error" class="alert alert-error hidden" style="margin-bottom:12px"></div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="closeEditModal()">Anuluj</button>
+        <button class="btn btn-primary" onclick="submitEdit()">Zapisz zmiany</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: QR -->
+  <div class="modal-box" id="modal-qr">
+    <div class="modal-inner narrow" style="text-align:center">
+      <button class="modal-close" onclick="closeQrModal()">&#10005;</button>
+      <h1 id="qr-title" style="font-size:1.1rem;margin-bottom:4px">Kod QR</h1>
+      <p style="color:#718096;font-size:.85rem;margin-bottom:16px">Student skanuje ten kod, aby sie zapisac na wydarzenie</p>
+      <div id="qr-canvas" style="display:flex;justify-content:center;margin-bottom:14px"></div>
+      <p id="qr-url-label" style="font-size:.72rem;color:#a0aec0;word-break:break-all;margin-top:4px"></p>
+    </div>
+  </div>
 </div>
+
 <script>
-var currentEventId=null,currentEventPunkty=10;
+var currentEventId=null,currentEventPunkty=10,currentEditId=null,currentParticipants=[],attendanceChart=null;
+
 function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+
 async function init(){
   var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
   var u=(await r.json()).user;
@@ -76,12 +138,51 @@ async function init(){
   document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
   loadEvents();
 }
+
 async function loadEvents(){
   var r=await fetch('/api/events?mine=1');var ev=await r.json();var el=document.getElementById('events-list');
-  if(!ev.length){el.innerHTML='<p style="color:#718096;padding:20px 0">Nie masz jeszcze zadnych wydarzen. <a href="create-event.html">Stworz pierwsze</a>.</p>';return;}
+  if(!ev.length){
+    el.innerHTML='<p style="color:#718096;padding:20px 0">Nie masz jeszcze zadnych wydarzen. <a href="create-event.html">Stworz pierwsze</a>.</p>';
+    document.getElementById('chart-section').style.display='none';
+    return;
+  }
   var today=new Date().toISOString().slice(0,10);
-  el.innerHTML=ev.map(function(e){var past=e.data_wydarzenia<today;return '<div class="event-card"><div class="event-info"><div class="event-name">'+e.nazwa_wydarzenia+'</div><div class="event-meta"><span class="badge badge-blue">'+(e.typ_wydarzenia||'Inne')+'</span> &#128197; '+e.data_wydarzenia+' | &#128205; '+e.miejsce+' | &#128101; '+e.zapisani+'/'+e.limit_miejsc+' | &#11088; '+(e.punkty||10)+' pkt</div></div><div class="event-actions"><button class="btn btn-secondary btn-sm" onclick="openParticipants('+e.id+',\''+e.nazwa_wydarzenia.replace(/'/g,"\\'")+'\','+( e.punkty||10)+')">Uczestnicy</button><button class="btn btn-secondary btn-sm" onclick="openOpinions('+e.id+',\''+e.nazwa_wydarzenia.replace(/'/g,"\\'")+'\')">Opinie</button>'+(past?'':'<button class="btn btn-danger btn-sm" onclick="deleteEvent('+e.id+')">Usun</button>')+'</div></div>';}).join('');
+  el.innerHTML=ev.map(function(e){
+    var past=e.data_wydarzenia<today;
+    var editBtn=past?'':'<button class="btn btn-secondary btn-sm" onclick="openEditModal('+e.id+',\''+esc(e.nazwa_wydarzenia)+'\',\''+e.data_wydarzenia+'\',\''+esc(e.miejsce)+'\','+e.limit_miejsc+',\''+esc(e.typ_wydarzenia||'Inne')+'\','+( e.punkty||10)+')">&#9998; Edytuj</button>';
+    var qrBtn='<button class="btn btn-secondary btn-sm" onclick="openQrModal('+e.id+',\''+esc(e.nazwa_wydarzenia)+'\')">QR</button>';
+    return '<div class="event-card"><div class="event-info"><div class="event-name">'+e.nazwa_wydarzenia+'</div><div class="event-meta"><span class="badge badge-blue">'+(e.typ_wydarzenia||'Inne')+'</span> &#128197; '+e.data_wydarzenia+' | &#128205; '+e.miejsce+' | &#128101; '+e.zapisani+'/'+e.limit_miejsc+' | &#11088; '+(e.punkty||10)+' pkt</div></div><div class="event-actions"><button class="btn btn-secondary btn-sm" onclick="openParticipants('+e.id+',\''+esc(e.nazwa_wydarzenia)+'\',' +(e.punkty||10)+')">Uczestnicy</button><button class="btn btn-secondary btn-sm" onclick="openOpinions('+e.id+',\''+esc(e.nazwa_wydarzenia)+'\')">Opinie</button>'+editBtn+qrBtn+(past?'':'<button class="btn btn-danger btn-sm" onclick="deleteEvent('+e.id+')">Usun</button>')+'</div></div>';
+  }).join('');
+  renderChart(ev);
 }
+
+function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+
+function renderChart(ev){
+  var section=document.getElementById('chart-section');
+  section.style.display='block';
+  if(attendanceChart){attendanceChart.destroy();}
+  var ctx=document.getElementById('attendance-chart').getContext('2d');
+  var labels=ev.map(function(e){return e.nazwa_wydarzenia.length>18?e.nazwa_wydarzenia.slice(0,16)+'…':e.nazwa_wydarzenia;});
+  var zapisani=ev.map(function(e){return e.zapisani;});
+  var limity=ev.map(function(e){return e.limit_miejsc;});
+  attendanceChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[
+        {label:'Zapisani',data:zapisani,backgroundColor:'rgba(43,108,176,0.75)',borderRadius:6},
+        {label:'Limit',data:limity,backgroundColor:'rgba(226,232,240,0.8)',borderRadius:6}
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'bottom'},tooltip:{mode:'index',intersect:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}}
+    }
+  });
+}
+
 async function openParticipants(eventId,eventName,punkty){
   currentEventId=eventId;currentEventPunkty=punkty||10;
   document.getElementById('participants-title').textContent='Uczestnicy: '+eventName;
@@ -90,13 +191,30 @@ async function openParticipants(eventId,eventName,punkty){
   await refreshParticipants(eventId);
 }
 async function refreshParticipants(eventId){
-  var r=await fetch('/api/events/'+eventId+'/participants');var list=await r.json();var body=document.getElementById('participants-body');
+  var r=await fetch('/api/events/'+eventId+'/participants');var list=await r.json();
+  currentParticipants=list;
+  var body=document.getElementById('participants-body');
   if(!list.length){body.innerHTML='<p style="color:#718096;padding:20px 0">Brak zapisanych uczestnikow.</p>';return;}
-  body.innerHTML=list.map(function(p){var isP=p.status_obecnosci==='OBECNY';return '<div class="participant-row" id="pr-'+p.reg_id+'"><div class="participant-name">'+p.imie_nazwisko+'</div><div class="participant-email">'+p.email+'</div><span class="badge '+(isP?'badge-green':'badge-gray')+'">'+p.status_obecnosci+'</span>'+(isP?'<button class="btn btn-warning btn-sm" onclick="markAbsent('+p.reg_id+')">Cofnij</button>':'<button class="btn btn-success btn-sm" onclick="markPresent('+p.reg_id+')">&#10003; Obecny (+'+currentEventPunkty+' pkt)</button>')+'</div>';}).join('');
+  body.innerHTML=list.map(function(p){
+    var isP=p.status_obecnosci==='OBECNY';
+    return '<div class="participant-row" id="pr-'+p.reg_id+'"><div class="participant-name">'+p.imie_nazwisko+'</div><div class="participant-email">'+p.email+'</div><span class="badge '+(isP?'badge-green':'badge-gray')+'">'+p.status_obecnosci+'</span>'+(isP?'<button class="btn btn-warning btn-sm" onclick="markAbsent('+p.reg_id+')">Cofnij</button>':'<button class="btn btn-success btn-sm" onclick="markPresent('+p.reg_id+')">&#10003; Obecny (+'+currentEventPunkty+' pkt)</button>')+'</div>';
+  }).join('');
 }
 async function markPresent(regId){var r=await fetch('/api/registrations/'+regId+'/attend',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);else{var d=await r.json();showAlert(d.error,'error');}}
 async function markAbsent(regId){var r=await fetch('/api/registrations/'+regId+'/absent',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);}
 function closeParticipantsModal(){document.getElementById('modal-participants').style.display='none';loadEvents();}
+
+function exportCSV(){
+  if(!currentParticipants.length){showAlert('Brak uczestnikow do eksportu.','error');return;}
+  var header='Imie i Nazwisko,Email,Status obecnosci\n';
+  var rows=currentParticipants.map(function(p){return '"'+p.imie_nazwisko+'","'+p.email+'","'+p.status_obecnosci+'"';}).join('\n');
+  var blob=new Blob(['﻿'+header+rows],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='uczestnicy_'+currentEventId+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
 async function openOpinions(eventId,eventName){
   document.getElementById('opinions-title').textContent='Opinie: '+eventName;
   document.getElementById('opinions-body').innerHTML='<div class="loading">Ladowanie...</div>';
@@ -107,6 +225,48 @@ async function openOpinions(eventId,eventName){
   body.innerHTML='<div style="margin-bottom:16px;padding:12px 16px;background:#ebf8ff;border-radius:8px;color:#1a3a6b"><strong>Srednia: '+avg+' / 5</strong> ('+list.length+' opinii)</div>'+list.map(function(o){return '<div class="opinion-card"><div class="opinion-author">'+o.imie_nazwisko+'</div><div class="opinion-stars">'+'&#9733;'.repeat(o.ocena)+'&#9734;'.repeat(5-o.ocena)+'</div><div class="opinion-text">'+o.tresc+'</div></div>';}).join('');
 }
 function closeOpinionsModal(){document.getElementById('modal-opinions').style.display='none';}
+
+function openEditModal(id,nazwa,data,miejsce,limit,typ,punkty){
+  currentEditId=id;
+  document.getElementById('edit-nazwa').value=nazwa;
+  document.getElementById('edit-data').value=data;
+  document.getElementById('edit-miejsce').value=miejsce;
+  document.getElementById('edit-limit').value=limit;
+  document.getElementById('edit-typ').value=typ;
+  document.getElementById('edit-punkty').value=punkty;
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('modal-edit').style.display='flex';
+}
+function closeEditModal(){document.getElementById('modal-edit').style.display='none';}
+async function submitEdit(){
+  var errEl=document.getElementById('edit-error');errEl.classList.add('hidden');
+  var body={
+    nazwa:document.getElementById('edit-nazwa').value.trim(),
+    data_wydarzenia:document.getElementById('edit-data').value,
+    miejsce:document.getElementById('edit-miejsce').value.trim(),
+    limit_miejsc:document.getElementById('edit-limit').value,
+    typ_wydarzenia:document.getElementById('edit-typ').value,
+    punkty:document.getElementById('edit-punkty').value
+  };
+  if(!body.nazwa||!body.data_wydarzenia||!body.miejsce||!body.limit_miejsc){errEl.textContent='Wypelnij wszystkie wymagane pola.';errEl.classList.remove('hidden');return;}
+  var r=await fetch('/api/events/'+currentEditId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var d=await r.json();
+  if(r.ok){closeEditModal();showAlert('Wydarzenie zaktualizowane.','success');loadEvents();}
+  else{errEl.textContent=d.error||'Blad zapisu.';errEl.classList.remove('hidden');}
+}
+
+var qrInstance=null;
+function openQrModal(eventId,eventName){
+  document.getElementById('qr-title').textContent='QR: '+eventName;
+  var url=window.location.origin+'/events.html?join='+eventId;
+  document.getElementById('qr-url-label').textContent=url;
+  var canvas=document.getElementById('qr-canvas');
+  canvas.innerHTML='';
+  qrInstance=new QRCode(canvas,{text:url,width:220,height:220,colorDark:'#1a3a6b',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+  document.getElementById('modal-qr').style.display='flex';
+}
+function closeQrModal(){document.getElementById('modal-qr').style.display='none';qrInstance=null;}
+
 async function deleteEvent(id){if(!confirm('Usunac wydarzenie?'))return;var r=await fetch('/api/events/'+id,{method:'DELETE'});if(r.ok){showAlert('Usunieto.','success');loadEvents();}}
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
 function showAlert(msg,type){var el=document.getElementById('alert');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}

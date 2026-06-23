@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejestracja - Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .register-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px}
+    .login-logo-wrap{text-align:center;margin-bottom:20px}
+    .login-logo-wrap img{height:72px;width:auto}
+    .login-tagline{font-size:.85rem;color:#718096;margin-top:6px;letter-spacing:.5px}
+    .register-card{width:100%;max-width:400px}
+    .form-footer{text-align:center;margin-top:14px;font-size:.9rem;color:#718096}
+    .form-footer a{color:#2b6cb0;font-weight:600;text-decoration:none}
+    .form-footer a:hover{text-decoration:underline}
+    .strength-bar{height:4px;border-radius:4px;margin-top:6px;transition:all .3s;background:#e2e8f0}
+    .strength-bar.weak{background:#fc8181;width:33%}
+    .strength-bar.ok{background:#f6ad55;width:66%}
+    .strength-bar.strong{background:#68d391;width:100%}
+  </style>
+</head>
+<body>
+<div class="register-wrap">
+  <div class="login-logo-wrap">
+    <img src="logo.png" alt="Wojskowa Akademia Techniczna">
+    <div class="login-tagline">Wojskowa Akademia Techniczna</div>
+  </div>
+  <div class="card register-card">
+    <h1>Rejestracja konta</h1>
+    <p style="color:#718096;font-size:.9rem;margin-bottom:20px">Stworz konto studenta, aby zapisywac sie na wydarzenia i zbierac punkty.</p>
+    <div id="alert" class="alert hidden"></div>
+    <div class="form-group">
+      <label>Imie i nazwisko</label>
+      <input type="text" id="imie" class="input" placeholder="np. Jan Kowalski" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>Adres e-mail</label>
+      <input type="email" id="email" class="input" placeholder="student@uczelnia.pl" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Haslo</label>
+      <input type="password" id="password" class="input" placeholder="Minimum 6 znakow" autocomplete="new-password" oninput="checkStrength()">
+      <div class="strength-bar" id="strength-bar"></div>
+    </div>
+    <div class="form-group">
+      <label>Powtorz haslo</label>
+      <input type="password" id="password2" class="input" placeholder="Powtorz haslo" autocomplete="new-password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="register()" id="submit-btn">Zaloz konto</button>
+    <div class="form-footer">
+      Masz juz konto? <a href="/">Zaloguj sie</a>
+    </div>
+  </div>
+</div>
+<script>
+function checkStrength(){
+  var pw=document.getElementById('password').value;
+  var bar=document.getElementById('strength-bar');
+  if(pw.length===0){bar.className='strength-bar';return;}
+  if(pw.length<6){bar.className='strength-bar weak';return;}
+  var strong=pw.length>=10&&/[A-Z]/.test(pw)&&/[0-9]/.test(pw);
+  bar.className='strength-bar '+(strong?'strong':'ok');
+}
+async function register(){
+  var imie=document.getElementById('imie').value.trim();
+  var email=document.getElementById('email').value.trim();
+  var pw=document.getElementById('password').value;
+  var pw2=document.getElementById('password2').value;
+  var alertEl=document.getElementById('alert');
+  alertEl.classList.add('hidden');
+  if(!imie||!email||!pw){showAlert('Wypelnij wszystkie pola.','error');return;}
+  if(pw.length<6){showAlert('Haslo musi miec co najmniej 6 znakow.','error');return;}
+  if(pw!==pw2){showAlert('Hasla sie nie zgadzaja.','error');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showAlert('Podaj prawidlowy adres email.','error');return;}
+  var btn=document.getElementById('submit-btn');
+  btn.disabled=true;btn.textContent='Rejestrowanie...';
+  try{
+    var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,imie_nazwisko:imie})});
+    var d=await r.json();
+    if(r.ok){
+      showAlert('Konto zostalo utworzone! Mozesz sie teraz zalogowac.','success');
+      setTimeout(function(){window.location='/';},2000);
+    }else{
+      showAlert(d.error||'Blad rejestracji.','error');
+      btn.disabled=false;btn.textContent='Zaloz konto';
+    }
+  }catch(e){
+    showAlert('Blad polaczenia z serwerem.','error');
+    btn.disabled=false;btn.textContent='Zaloz konto';
+  }
+}
+function showAlert(msg,type){
+  var el=document.getElementById('alert');
+  el.textContent=msg;el.className='alert alert-'+type;
+}
+document.addEventListener('keydown',function(e){if(e.key==='Enter')register();});
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@
   <title>Wydarzenia - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     .star-btn{background:none;border:none;font-size:1.6rem;cursor:pointer;color:#cbd5e0;padding:0 2px;transition:color .1s}
     .star-btn.active,.star-btn:hover{color:#f6ad55}
@@ -13,6 +14,8 @@
     .opinion-textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.95rem;resize:vertical;min-height:80px}
     .opinion-textarea:focus{outline:none;border-color:#2b6cb0;box-shadow:0 0 0 3px rgba(43,108,176,.1)}
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:100;padding:16px}
+    #qr-reader{width:100%;max-width:340px;margin:0 auto}
+    #qr-reader video{border-radius:10px}
   </style>
 </head>
 <body>
@@ -41,6 +44,7 @@
   <div class="nav-links">
     <span class="nav-user" id="nav-user"></span>
     <a href="gamification.html">&#127942; Ranking</a>
+    <button class="btn btn-secondary" style="padding:6px 14px;font-size:.85rem" onclick="openQrScanner()">&#128247; Skanuj QR</button>
     <a href="#" onclick="logout()">Wyloguj</a>
     <button class="hamburger" onclick="openDrawer()">&#9776;</button>
   </div>
@@ -54,6 +58,7 @@
   </div>
 </div>
 
+<!-- Modal: Opinia -->
 <div id="opinion-modal" class="modal-overlay">
   <div class="card" style="width:480px;max-width:100%;position:relative">
     <button onclick="closeOpinionModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
@@ -79,10 +84,22 @@
   </div>
 </div>
 
+<!-- Modal: Skaner QR -->
+<div id="qr-modal" class="modal-overlay">
+  <div class="card" style="width:400px;max-width:100%;position:relative;text-align:center">
+    <button onclick="closeQrScanner()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">&#10005;</button>
+    <h1 style="font-size:1.1rem;margin-bottom:6px">Skanuj QR wydarzenia</h1>
+    <p style="color:#718096;font-size:.85rem;margin-bottom:14px">Skieruj kamere na kod QR wyswietlony przez organizatora</p>
+    <div id="qr-reader"></div>
+    <div id="qr-result" style="margin-top:14px;font-size:.9rem"></div>
+  </div>
+</div>
+
 <script>
-var currentUser=null,allEvents=[],currentRegId=null,selectedStar=0;
+var currentUser=null,allEvents=[],currentRegId=null,selectedStar=0,html5QrCode=null;
 function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+
 async function init(){
   try{
     var r=await fetch('/api/me');
@@ -92,9 +109,23 @@ async function init(){
     if(currentUser.rola==='Organizator'){window.location='/organizer.html';return;}
     document.getElementById('nav-user').textContent=currentUser.imie_nazwisko;
     document.getElementById('drawer-user-info').innerHTML='<strong>'+currentUser.imie_nazwisko+'</strong>'+currentUser.email;
+    var join=new URLSearchParams(window.location.search).get('join');
+    if(join){
+      window.history.replaceState({},'','/events.html');
+      await autoRegister(parseInt(join));
+    }
     loadEvents();
   }catch(e){document.getElementById('events-body').innerHTML='<div class="alert alert-error">Blad polaczenia. Odswiez strone.</div>';}
 }
+
+async function autoRegister(eventId){
+  try{
+    var r=await fetch('/api/events/'+eventId+'/register',{method:'POST'});
+    var d=await r.json();
+    showAlert(r.ok?'Zapisano przez QR!':d.error,r.ok?'success':'error');
+  }catch(e){showAlert('Blad rejestracji przez QR.','error');}
+}
+
 async function loadEvents(){
   var c=document.getElementById('events-body');
   c.innerHTML='<div class="loading">Ladowanie...</div>';
@@ -108,18 +139,16 @@ async function loadEvents(){
     var h='<div class="events-grid">';
     for(var i=0;i<ev.length;i++){
       var e=ev[i];
-      var full=e.zapisani>=e.limit_mejsc;
       var past=e.data_wydarzenia<today;
       var isP=e.user_status==='OBECNY',isR=e.user_registered;
-      var pct=e.limit_mejsc>0?Math.round(e.zapisani/e.limit_mejsc*100):0;
-      var full=e.zapisani>=e.limit_miejsc;pct=e.limit_miejsc>0?Math.round(e.zapisani/e.limit_miejsc*100):0;
+      var pct=e.limit_miejsc>0?Math.round(e.zapisani/e.limit_miejsc*100):0;
+      var full=e.zapisani>=e.limit_miejsc;
       var fc=pct>=100?'full':pct>=75?'warn':'';
       var sb=past?'<span class="badge badge-gray">Zakonczone</span>':(full?'<span class="badge badge-orange">Kompletne</span>':'<span class="badge badge-green">Aktywne</span>');
       var rb=isP?'<span class="badge badge-green">&#10003; Obecny</span>':(isR?'<span class="badge badge-blue">Zapisany</span>':'');
       var sn=e.nazwa_wydarzenia.replace(/'/g,"\\'");
       var ab='';
-      if(past&&isP) ab='<button class="btn btn-secondary btn-sm" onclick="openOpinion('+e.user_reg_id+',\''+sn+'\')">&#11088; Opinia</button>';
-      else if(!past&&isP) ab='<button class="btn btn-secondary btn-sm" onclick="openOpinion('+e.user_reg_id+',\''+sn+'\')">&#11088; Opinia</button>';
+      if(isP) ab='<button class="btn btn-secondary btn-sm" onclick="openOpinion('+e.user_reg_id+',\''+sn+'\')">&#11088; Opinia</button>';
       else if(!past&&isR) ab='<button class="btn btn-warning btn-sm" onclick="unregister('+e.id+')">Wypisz sie</button>';
       else if(!past&&!full) ab='<button class="btn btn-primary btn-sm" onclick="register('+e.id+')">Zapisz sie</button>';
       h+='<div class="ev-card">';
@@ -138,12 +167,43 @@ async function loadEvents(){
     c.innerHTML='<div class="alert alert-error">Blad: '+err.message+' <button class="btn btn-secondary btn-sm" onclick="loadEvents()" style="margin-left:8px">Sprobuj ponownie</button></div>';
   }
 }
+
 async function register(id){
-  try{var r=await fetch('/api/events/'+id+'/register',{method:'POST'});var d=await r.json();var ev=allEvents.find(function(e){return e.id===id;});var pts=ev?(ev.punkty||10):10;showAlert(r.ok?('Zapisano! (+'+pts+' pkt)'):d.error,r.ok?'success':'error');if(r.ok)loadEvents();}catch(e){showAlert('Blad polaczenia.','error');}
+  try{var r=await fetch('/api/events/'+id+'/register',{method:'POST'});var d=await r.json();var ev=allEvents.find(function(e){return e.id===id;});var pts=ev?(ev.punkty||10):10;showAlert(r.ok?('Zapisano! (+'+pts+' pkt po potwierdzeniu obecnosci)'):d.error,r.ok?'success':'error');if(r.ok)loadEvents();}catch(e){showAlert('Blad polaczenia.','error');}
 }
 async function unregister(id){
   try{var r=await fetch('/api/events/'+id+'/unregister',{method:'POST'});var d=await r.json();showAlert(r.ok?'Wypisano.':d.error,r.ok?'success':'error');if(r.ok)loadEvents();}catch(e){showAlert('Blad polaczenia.','error');}
 }
+
+function openQrScanner(){
+  document.getElementById('qr-result').innerHTML='';
+  document.getElementById('qr-modal').style.display='flex';
+  html5QrCode=new Html5Qrcode('qr-reader');
+  html5QrCode.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},onQrSuccess,function(){}).catch(function(err){
+    document.getElementById('qr-result').innerHTML='<span style="color:#e53e3e">Brak dostepu do kamery: '+err+'</span>';
+  });
+}
+async function onQrSuccess(text){
+  try{html5QrCode.stop();}catch(e){}
+  document.getElementById('qr-result').innerHTML='<div class="loading">Rejestrowanie...</div>';
+  var match=text.match(/[?&]join=(\d+)/);
+  if(!match){document.getElementById('qr-result').innerHTML='<span style="color:#e53e3e">Nieprawidlowy kod QR.</span>';return;}
+  var eventId=parseInt(match[1]);
+  var r=await fetch('/api/events/'+eventId+'/register',{method:'POST'});
+  var d=await r.json();
+  if(r.ok){
+    document.getElementById('qr-result').innerHTML='<span style="color:#276749;font-weight:700">&#10003; Zapisano!</span>';
+    setTimeout(function(){closeQrScanner();loadEvents();},1500);
+  }else{
+    document.getElementById('qr-result').innerHTML='<span style="color:#e53e3e">'+d.error+'</span>';
+  }
+}
+function closeQrScanner(){
+  if(html5QrCode){try{html5QrCode.stop();}catch(e){}html5QrCode=null;}
+  document.getElementById('qr-modal').style.display='none';
+  document.getElementById('qr-reader').innerHTML='';
+}
+
 async function openOpinion(regId,eventName){
   currentRegId=regId;selectedStar=0;
   document.getElementById('opinion-event-label').textContent=eventName;
