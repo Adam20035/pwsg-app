@@ -120,7 +120,7 @@ async function init(){
 
 async function autoRegister(eventId){
   try{
-    var r=await fetch('/api/events/'+eventId+'/register',{method:'POST'});
+    var r=await fetch('/api/events/'+eventId+'/checkin',{method:'POST'});
     var d=await r.json();
     showAlert(r.ok?'Zapisano przez QR!':d.error,r.ok?'success':'error');
   }catch(e){showAlert('Blad rejestracji przez QR.','error');}
@@ -189,7 +189,7 @@ async function onQrSuccess(text){
   var match=text.match(/[?&]join=(\d+)/);
   if(!match){document.getElementById('qr-result').innerHTML='<span style="color:#e53e3e">Nieprawidlowy kod QR.</span>';return;}
   var eventId=parseInt(match[1]);
-  var r=await fetch('/api/events/'+eventId+'/register',{method:'POST'});
+  var r=await fetch('/api/events/'+eventId+'/checkin',{method:'POST'});
   var d=await r.json();
   if(r.ok){
     document.getElementById('qr-result').innerHTML='<span style="color:#276749;font-weight:700">&#10003; Zapisano!</span>';
