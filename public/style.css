@@ -271,3 +271,6 @@ tbody td { padding: 11px 14px; font-size: 0.875rem; }
 .drawer-nav a.danger:hover { background:#fff5f5; border-left-color:#e53e3e; }
 .drawer-user { padding:14px 20px; border-top:1px solid #e2e8f0; font-size:.82rem; color:#718096; }
 .drawer-user strong { color:#2d3748; display:block; margin-bottom:2px; }
+
+/* ── Utility ─────────────────────────────────────────────────── */
+.hidden { display: none !important; }
