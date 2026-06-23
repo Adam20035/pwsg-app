@@ -6,95 +6,103 @@
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    .register-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px}
-    .login-logo-wrap{text-align:center;margin-bottom:20px}
-    .login-logo-wrap img{height:72px;width:auto}
-    .login-tagline{font-size:.85rem;color:#718096;margin-top:6px;letter-spacing:.5px}
-    .register-card{width:100%;max-width:400px}
-    .form-footer{text-align:center;margin-top:14px;font-size:.9rem;color:#718096}
-    .form-footer a{color:#2b6cb0;font-weight:600;text-decoration:none}
-    .form-footer a:hover{text-decoration:underline}
-    .strength-bar{height:4px;border-radius:4px;margin-top:6px;transition:all .3s;background:#e2e8f0}
-    .strength-bar.weak{background:#fc8181;width:33%}
-    .strength-bar.ok{background:#f6ad55;width:66%}
-    .strength-bar.strong{background:#68d391;width:100%}
+    .strength-bar{height:4px;border-radius:2px;margin-top:6px;transition:width .3s,background .3s;width:0}
+    .strength-weak{width:33%;background:#e53e3e}
+    .strength-ok{width:66%;background:#ed8936}
+    .strength-strong{width:100%;background:#38a169}
+    .strength-label{font-size:.75rem;margin-top:3px;color:#718096}
   </style>
 </head>
 <body>
-<div class="register-wrap">
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+</nav>
+<div class="container">
   <div class="login-logo-wrap">
-    <img src="logo.png" alt="Wojskowa Akademia Techniczna">
+    <img src="logo.png" alt="WAT">
     <div class="login-tagline">Wojskowa Akademia Techniczna</div>
   </div>
-  <div class="card register-card">
-    <h1>Rejestracja konta</h1>
-    <p style="color:#718096;font-size:.9rem;margin-bottom:20px">Stworz konto studenta, aby zapisywac sie na wydarzenia i zbierac punkty.</p>
-    <div id="alert" class="alert hidden"></div>
+  <div class="card" id="form-card">
+    <h1>Zaloz konto</h1>
+    <div id="alert-error" class="alert alert-error hidden"></div>
     <div class="form-group">
       <label>Imie i nazwisko</label>
-      <input type="text" id="imie" class="input" placeholder="np. Jan Kowalski" autocomplete="name">
+      <input type="text" id="imie" placeholder="Jan Kowalski">
     </div>
     <div class="form-group">
       <label>Adres e-mail</label>
-      <input type="email" id="email" class="input" placeholder="student@uczelnia.pl" autocomplete="email">
+      <input type="email" id="email" placeholder="jan@student.pl">
     </div>
     <div class="form-group">
       <label>Haslo</label>
-      <input type="password" id="password" class="input" placeholder="Minimum 6 znakow" autocomplete="new-password" oninput="checkStrength()">
+      <input type="password" id="password" placeholder="min. 6 znakow" oninput="checkStrength()">
       <div class="strength-bar" id="strength-bar"></div>
+      <div class="strength-label" id="strength-label"></div>
     </div>
     <div class="form-group">
       <label>Powtorz haslo</label>
-      <input type="password" id="password2" class="input" placeholder="Powtorz haslo" autocomplete="new-password">
+      <input type="password" id="password2" placeholder="Powtorz haslo">
     </div>
-    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="register()" id="submit-btn">Zaloz konto</button>
-    <div class="form-footer">
-      Masz juz konto? <a href="/">Zaloguj sie</a>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="register()">Zaloz konto</button>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:.9rem;color:#718096">
+      Masz juz konto? <a href="/" style="color:#2b6cb0;font-weight:600;text-decoration:none">Zaloguj sie</a>
+    </div>
+  </div>
+
+  <div class="card hidden" id="success-card" style="text-align:center">
+    <div style="font-size:3rem;margin-bottom:12px">&#128231;</div>
+    <h1 style="font-size:1.3rem">Sprawdz skrzynke e-mail!</h1>
+    <p style="color:#4a5568">Wyslalismy wiadomosc na adres <strong id="success-email"></strong>.</p>
+    <p style="color:#718096;font-size:.9rem">Kliknij link w e-mailu, aby aktywowac konto. Jesli wiadomosc nie dotrze, sprawdz folder Spam.</p>
+    <div style="margin-top:24px">
+      <a href="/" class="btn btn-primary">Przejdz do logowania</a>
     </div>
   </div>
 </div>
 <script>
-function checkStrength(){
-  var pw=document.getElementById('password').value;
-  var bar=document.getElementById('strength-bar');
-  if(pw.length===0){bar.className='strength-bar';return;}
-  if(pw.length<6){bar.className='strength-bar weak';return;}
-  var strong=pw.length>=10&&/[A-Z]/.test(pw)&&/[0-9]/.test(pw);
-  bar.className='strength-bar '+(strong?'strong':'ok');
+function checkStrength() {
+  var p = document.getElementById('password').value;
+  var bar = document.getElementById('strength-bar');
+  var lbl = document.getElementById('strength-label');
+  if (!p) { bar.className = 'strength-bar'; lbl.textContent = ''; return; }
+  if (p.length < 6) { bar.className = 'strength-bar strength-weak'; lbl.textContent = 'Slabe'; }
+  else if (p.length < 10) { bar.className = 'strength-bar strength-ok'; lbl.textContent = 'Srednie'; }
+  else { bar.className = 'strength-bar strength-strong'; lbl.textContent = 'Silne'; }
 }
-async function register(){
-  var imie=document.getElementById('imie').value.trim();
-  var email=document.getElementById('email').value.trim();
-  var pw=document.getElementById('password').value;
-  var pw2=document.getElementById('password2').value;
-  var alertEl=document.getElementById('alert');
-  alertEl.classList.add('hidden');
-  if(!imie||!email||!pw){showAlert('Wypelnij wszystkie pola.','error');return;}
-  if(pw.length<6){showAlert('Haslo musi miec co najmniej 6 znakow.','error');return;}
-  if(pw!==pw2){showAlert('Hasla sie nie zgadzaja.','error');return;}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showAlert('Podaj prawidlowy adres email.','error');return;}
-  var btn=document.getElementById('submit-btn');
-  btn.disabled=true;btn.textContent='Rejestrowanie...';
-  try{
-    var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw,imie_nazwisko:imie})});
-    var d=await r.json();
-    if(r.ok){
-      showAlert('Konto zostalo utworzone! Mozesz sie teraz zalogowac.','success');
-      setTimeout(function(){window.location='/';},2000);
-    }else{
-      showAlert(d.error||'Blad rejestracji.','error');
-      btn.disabled=false;btn.textContent='Zaloz konto';
-    }
-  }catch(e){
-    showAlert('Blad polaczenia z serwerem.','error');
-    btn.disabled=false;btn.textContent='Zaloz konto';
+
+async function register() {
+  var imie   = document.getElementById('imie').value.trim();
+  var email  = document.getElementById('email').value.trim();
+  var pass   = document.getElementById('password').value;
+  var pass2  = document.getElementById('password2').value;
+  var err    = document.getElementById('alert-error');
+
+  err.classList.add('hidden');
+  if (!imie || !email || !pass || !pass2) { err.textContent = 'Wypelnij wszystkie pola.'; err.classList.remove('hidden'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = 'Podaj prawidlowy adres e-mail.'; err.classList.remove('hidden'); return; }
+  if (pass.length < 6) { err.textContent = 'Haslo musi miec co najmniej 6 znakow.'; err.classList.remove('hidden'); return; }
+  if (pass !== pass2) { err.textContent = 'Hasla nie sa zgodne.'; err.classList.remove('hidden'); return; }
+
+  try {
+    var r = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, imie_nazwisko: imie })
+    });
+    var d = await r.json();
+    if (!r.ok) { err.textContent = d.error || 'Blad rejestracji.'; err.classList.remove('hidden'); return; }
+    document.getElementById('success-email').textContent = email;
+    document.getElementById('form-card').classList.add('hidden');
+    document.getElementById('success-card').classList.remove('hidden');
+  } catch (e) {
+    err.textContent = 'Blad polaczenia z serwerem.';
+    err.classList.remove('hidden');
   }
 }
-function showAlert(msg,type){
-  var el=document.getElementById('alert');
-  el.textContent=msg;el.className='alert alert-'+type;
-}
-document.addEventListener('keydown',function(e){if(e.key==='Enter')register();});
+
+document.addEventListener('keydown', function(e) { if (e.key === 'Enter') register(); });
 </script>
 </body>
 </html>

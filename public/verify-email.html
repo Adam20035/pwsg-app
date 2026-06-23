@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weryfikacja e-mail - Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav>
+  <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
+</nav>
+<div class="container">
+  <div class="login-logo-wrap">
+    <img src="logo.png" alt="WAT">
+    <div class="login-tagline">Wojskowa Akademia Techniczna</div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div id="status-icon" style="font-size:3rem;margin-bottom:16px">&#9203;</div>
+    <h1 id="status-title" style="font-size:1.3rem">Weryfikacja adresu e-mail...</h1>
+    <p id="status-msg" style="color:#718096">Prosze czekac.</p>
+    <div id="btn-wrap" style="margin-top:24px;display:none">
+      <a href="/" class="btn btn-primary">Przejdz do logowania</a>
+    </div>
+  </div>
+</div>
+<script>
+async function verify() {
+  var token = new URLSearchParams(window.location.search).get('token');
+  var icon  = document.getElementById('status-icon');
+  var title = document.getElementById('status-title');
+  var msg   = document.getElementById('status-msg');
+  var btns  = document.getElementById('btn-wrap');
+
+  if (!token) {
+    icon.textContent  = '❌';
+    title.textContent = 'Brak tokenu weryfikacyjnego';
+    msg.textContent   = 'Link jest niepoprawny. Sprawdz skrzynke i kliknij wlasciwy link.';
+    return;
+  }
+
+  var r = await fetch('/api/verify-email?token=' + encodeURIComponent(token));
+  var d = await r.json();
+
+  if (r.ok) {
+    icon.textContent  = '✅';
+    title.textContent = 'E-mail potwierdzony!';
+    msg.textContent   = 'Twoje konto jest aktywne. Mozesz sie teraz zalogowac.';
+    btns.style.display = 'block';
+    setTimeout(function(){ window.location = '/'; }, 3000);
+  } else {
+    icon.textContent  = '❌';
+    title.textContent = 'Weryfikacja nieudana';
+    msg.textContent   = d.error || 'Nieprawidlowy lub juz uzywany link weryfikacyjny.';
+    btns.style.display = 'block';
+  }
+}
+verify();
+</script>
+</body>
+</html>

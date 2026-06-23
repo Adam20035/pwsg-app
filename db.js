@@ -31,14 +31,14 @@ async function seedIfEmpty() {
   const snap = await COL.users.limit(1).get();
   if (!snap.empty) return;
   const usersSeed = [
-    { id: 1, email: 'admin@pwsg.pl', password: 'admin123', imie_nazwisko: 'Administrator Systemu', rola: 'Admin', active: 1, suma_punktow: 0 },
-    { id: 2, email: 'organizator@pwsg.pl', password: 'org123', imie_nazwisko: 'Samorzad Studencki', rola: 'Organizator', active: 1, suma_punktow: 0 },
-    { id: 3, email: 'samorzad@wat.edu.pl', password: 'org123', imie_nazwisko: 'Samorzad WAT', rola: 'Organizator', active: 1, suma_punktow: 0 },
-    { id: 4, email: 'jan.kowalski@student.pl', password: 'student123', imie_nazwisko: 'Jan Kowalski', rola: 'Student', active: 1, suma_punktow: 450 },
-    { id: 5, email: 'anna.nowak@student.pl', password: 'student123', imie_nazwisko: 'Anna Nowak', rola: 'Student', active: 1, suma_punktow: 600 },
-    { id: 6, email: 'piotr.wisniewski@student.pl', password: 'student123', imie_nazwisko: 'Piotr Wisniewski', rola: 'Student', active: 1, suma_punktow: 550 },
-    { id: 7, email: 'marek.zielinski@student.pl', password: 'student123', imie_nazwisko: 'Marek Zielinski', rola: 'Student', active: 1, suma_punktow: 520 },
-    { id: 8, email: 'student@pwsg.pl', password: 'student123', imie_nazwisko: 'Adam Kowalczyk', rola: 'Student', active: 1, suma_punktow: 380 },
+    { id: 1, email: 'admin@pwsg.pl', password: 'admin123', imie_nazwisko: 'Administrator Systemu', rola: 'Admin', active: 1, suma_punktow: 0, email_verified: true },
+    { id: 2, email: 'organizator@pwsg.pl', password: 'org123', imie_nazwisko: 'Samorzad Studencki', rola: 'Organizator', active: 1, suma_punktow: 0, email_verified: true },
+    { id: 3, email: 'samorzad@wat.edu.pl', password: 'org123', imie_nazwisko: 'Samorzad WAT', rola: 'Organizator', active: 1, suma_punktow: 0, email_verified: true },
+    { id: 4, email: 'jan.kowalski@student.pl', password: 'student123', imie_nazwisko: 'Jan Kowalski', rola: 'Student', active: 1, suma_punktow: 450, email_verified: true },
+    { id: 5, email: 'anna.nowak@student.pl', password: 'student123', imie_nazwisko: 'Anna Nowak', rola: 'Student', active: 1, suma_punktow: 600, email_verified: true },
+    { id: 6, email: 'piotr.wisniewski@student.pl', password: 'student123', imie_nazwisko: 'Piotr Wisniewski', rola: 'Student', active: 1, suma_punktow: 550, email_verified: true },
+    { id: 7, email: 'marek.zielinski@student.pl', password: 'student123', imie_nazwisko: 'Marek Zielinski', rola: 'Student', active: 1, suma_punktow: 520, email_verified: true },
+    { id: 8, email: 'student@pwsg.pl', password: 'student123', imie_nazwisko: 'Adam Kowalczyk', rola: 'Student', active: 1, suma_punktow: 380, email_verified: true },
   ];
   const wydarzeniaSeed = [
     { id: 1, nazwa_wydarzenia: 'Hackathon WAT 2026', data_wydarzenia: '2026-06-20', miejsce: 'Aula A1', limit_miejsc: 100, id_organizatora: 2, typ_wydarzenia: 'Warsztaty', punkty: 20 },
@@ -109,11 +109,24 @@ const users = {
       tx.update(ref, { suma_punktow: Math.max(0, current + pts) });
     });
   },
-  register: async (email, password, imie_nazwisko) => {
+  register: async (email, password, imie_nazwisko, token) => {
     await ready;
     const id = await nextId('users');
-    await COL.users.doc(String(id)).set({ id, email, password, imie_nazwisko, rola: 'Student', active: 1, suma_punktow: 0 });
+    await COL.users.doc(String(id)).set({
+      id, email, password, imie_nazwisko,
+      rola: 'Student', active: 1,
+      suma_punktow: 0,
+      email_verified: false,
+      verification_token: token,
+    });
     return id;
+  },
+  verifyByToken: async (token) => {
+    await ready;
+    const snap = await COL.users.where('verification_token','==',token).limit(1).get();
+    if (snap.empty) return false;
+    await snap.docs[0].ref.update({ email_verified: true, verification_token: null });
+    return true;
   },
   toggle: async (id) => {
     await ready;
@@ -328,11 +341,7 @@ const opinie = {
     return regSnap.docs.map(docToObj).map(r => {
       const u = usersMap[r.id_studenta] || {};
       const o = opByReg[r.id] || null;
-      return {
-        imie_nazwisko: u.imie_nazwisko || '?',
-        ocena: o ? o.ocena : null,
-        tresc: o ? o.tresc : null,
-      };
+      return { imie_nazwisko: u.imie_nazwisko || '?', ocena: o ? o.ocena : null, tresc: o ? o.tresc : null };
     });
   },
 };

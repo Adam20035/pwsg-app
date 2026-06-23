@@ -1,6 +1,8 @@
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { users, wydarzenia, rejestracje, opinie } = require('./db');
 
 const app = express();
@@ -13,6 +15,33 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 8 }
 }));
 
+// ── Mailer ────────────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendVerificationEmail(email, token, baseUrl) {
+  const link = baseUrl + '/verify-email.html?token=' + token;
+  await transporter.sendMail({
+    from: '"Platforma Wydarzen Studenckich" <' + process.env.SMTP_USER + '>',
+    to: email,
+    subject: 'Potwierdz swoj adres e-mail',
+    html: '<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">'
+      + '<h2 style="color:#2b6cb0">Platforma Wydarzen Studenckich</h2>'
+      + '<p>Witaj! Kliknij ponizszy przycisk, aby potwierdzic swoj adres e-mail i aktywowac konto.</p>'
+      + '<a href="' + link + '" style="display:inline-block;padding:12px 28px;background:#2b6cb0;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Potwierdz e-mail</a>'
+      + '<p style="color:#718096;font-size:.85rem;margin-top:24px">Jezeli nie zakladales konta, zignoruj ta wiadomosc.</p>'
+      + '</div>',
+  });
+}
+
+// ── Middleware ────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Niezalogowany' });
   next();
@@ -34,8 +63,24 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Haslo musi miec co najmniej 6 znakow.' });
   const existing = await users.findByEmail(email);
   if (existing) return res.status(400).json({ error: 'Ten email jest juz zarejestrowany.' });
-  const id = await users.register(email, password, imie_nazwisko);
+  const token = crypto.randomBytes(32).toString('hex');
+  const id = await users.register(email, password, imie_nazwisko, token);
+  const baseUrl = req.protocol + '://' + req.get('host');
+  try {
+    await sendVerificationEmail(email, token, baseUrl);
+  } catch (e) {
+    console.error('Blad wysylania emaila:', e.message);
+  }
   res.json({ ok: true, id });
+});
+
+// ── Email verification ────────────────────────────────────────
+app.get('/api/verify-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Brak tokenu.' });
+  const ok = await users.verifyByToken(token);
+  if (!ok) return res.status(400).json({ error: 'Nieprawidlowy lub wygasly link weryfikacyjny.' });
+  res.json({ ok: true });
 });
 
 // ── Auth ────────────────────────────────────────────────────
@@ -45,6 +90,8 @@ app.post('/api/login', async (req, res) => {
     return res.status(403).json({ error: 'Twoje konto zostalo zablokowane. Skontaktuj sie z administratorem.' });
   const user = await users.findByCredentials(req.body.email, req.body.password);
   if (!user) return res.status(401).json({ error: 'Nieprawidlowy email lub haslo.' });
+  if (user.email_verified === false)
+    return res.status(403).json({ error: 'Potwierdz adres e-mail. Sprawdz skrzynke pocztowa i kliknij link weryfikacyjny.' });
   req.session.userId = user.id;
   req.session.role   = user.rola;
   res.json({ user: { id: user.id, email: user.email, rola: user.rola, imie_nazwisko: user.imie_nazwisko, suma_punktow: user.suma_punktow } });
@@ -231,4 +278,4 @@ app.delete('/api/admin/events/:id', requireRole('Admin'), async (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`PWSG dziala na http://localhost:${PORT}`));
+app.listen(PORT, () => console.log('PWSG dziala na http://localhost:' + PORT));
