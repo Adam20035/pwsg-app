@@ -30,7 +30,6 @@ async function nextId(name) {
 async function seedIfEmpty() {
   const snap = await COL.users.limit(1).get();
   if (!snap.empty) return;
-
   const usersSeed = [
     { id: 1, email: 'admin@pwsg.pl', password: 'admin123', imie_nazwisko: 'Administrator Systemu', rola: 'Admin', active: 1, suma_punktow: 0 },
     { id: 2, email: 'organizator@pwsg.pl', password: 'org123', imie_nazwisko: 'Samorzad Studencki', rola: 'Organizator', active: 1, suma_punktow: 0 },
@@ -58,7 +57,6 @@ async function seedIfEmpty() {
   const opinieSeed = [
     { id: 1, id_rejestracji: 2, ocena: 5, tresc: 'Swietnie zorganizowane! Na pewno wroce.' },
   ];
-
   const batch = db.batch();
   usersSeed.forEach(u => batch.set(COL.users.doc(String(u.id)), u));
   wydarzeniaSeed.forEach(e => batch.set(COL.wydarzenia.doc(String(e.id)), e));
@@ -78,12 +76,12 @@ function docToObj(doc) {
 const users = {
   findByCredentials: async (email, password) => {
     await ready;
-    const snap = await COL.users.where('email', '==', email).where('password', '==', password).where('active', '==', 1).limit(1).get();
+    const snap = await COL.users.where('email','==',email).where('password','==',password).where('active','==',1).limit(1).get();
     return snap.empty ? null : docToObj(snap.docs[0]);
   },
   findByEmail: async (email) => {
     await ready;
-    const snap = await COL.users.where('email', '==', email).limit(1).get();
+    const snap = await COL.users.where('email','==',email).limit(1).get();
     return snap.empty ? null : docToObj(snap.docs[0]);
   },
   findById: async (id) => {
@@ -94,12 +92,12 @@ const users = {
   getAll: async () => {
     await ready;
     const snap = await COL.users.get();
-    return snap.docs.map(docToObj).sort((a, b) => a.rola.localeCompare(b.rola) || a.email.localeCompare(b.email));
+    return snap.docs.map(docToObj).sort((a,b) => a.rola.localeCompare(b.rola) || a.email.localeCompare(b.email));
   },
   getRanking: async () => {
     await ready;
-    const snap = await COL.users.where('rola', '==', 'Student').where('active', '==', 1).get();
-    return snap.docs.map(docToObj).sort((a, b) => b.suma_punktow - a.suma_punktow).slice(0, 20);
+    const snap = await COL.users.where('rola','==','Student').where('active','==',1).get();
+    return snap.docs.map(docToObj).sort((a,b) => b.suma_punktow - a.suma_punktow).slice(0,20);
   },
   addPoints: async (id, pts) => {
     await ready;
@@ -124,13 +122,17 @@ const users = {
     if (!snap.exists) return;
     await ref.update({ active: snap.data().active ? 0 : 1 });
   },
+  setRole: async (id, role) => {
+    await ready;
+    await COL.users.doc(String(id)).update({ rola: role });
+  },
   delete: async (id) => {
     await ready;
-    const regsSnap = await COL.rejestracje.where('id_studenta', '==', id).get();
+    const regsSnap = await COL.rejestracje.where('id_studenta','==',id).get();
     const regIds = regsSnap.docs.map(d => parseInt(d.id));
     const batch = db.batch();
     for (const rid of regIds) {
-      const opSnap = await COL.opinie.where('id_rejestracji', '==', rid).get();
+      const opSnap = await COL.opinie.where('id_rejestracji','==',rid).get();
       opSnap.docs.forEach(d => batch.delete(d.ref));
     }
     regsSnap.docs.forEach(d => batch.delete(d.ref));
@@ -146,7 +148,7 @@ const wydarzenia = {
     const [evSnap, regSnap, usSnap] = await Promise.all([COL.wydarzenia.get(), COL.rejestracje.get(), COL.users.get()]);
     const regs = regSnap.docs.map(docToObj);
     const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
-    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => {
+    return evSnap.docs.map(docToObj).sort((a,b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => {
       const reg = regs.find(r => r.id_wydarzenia === e.id && r.id_studenta === userId) || null;
       return {
         ...e,
@@ -161,13 +163,12 @@ const wydarzenia = {
   getMine: async (orgId) => {
     await ready;
     const [evSnap, regSnap] = await Promise.all([
-      COL.wydarzenia.where('id_organizatora', '==', orgId).get(),
+      COL.wydarzenia.where('id_organizatora','==',orgId).get(),
       COL.rejestracje.get(),
     ]);
     const regs = regSnap.docs.map(docToObj);
-    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
-      ...e,
-      zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
+    return evSnap.docs.map(docToObj).sort((a,b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
+      ...e, zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
     }));
   },
   getAllAdmin: async () => {
@@ -175,7 +176,7 @@ const wydarzenia = {
     const [evSnap, regSnap, usSnap] = await Promise.all([COL.wydarzenia.get(), COL.rejestracje.get(), COL.users.get()]);
     const regs = regSnap.docs.map(docToObj);
     const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
-    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
+    return evSnap.docs.map(docToObj).sort((a,b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
       ...e,
       zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
       organizator_nazwa: (usersMap[e.id_organizatora] || {}).imie_nazwisko || '',
@@ -211,15 +212,16 @@ const wydarzenia = {
     await COL.wydarzenia.doc(String(id)).update(allowed);
     return true;
   },
-  delete: async (id, orgId) => {
+  delete: async (id, orgId, isAdmin = false) => {
     await ready;
     const doc = await COL.wydarzenia.doc(String(id)).get();
-    if (!doc.exists || doc.data().id_organizatora !== orgId) return false;
-    const regsSnap = await COL.rejestracje.where('id_wydarzenia', '==', id).get();
+    if (!doc.exists) return false;
+    if (!isAdmin && doc.data().id_organizatora !== orgId) return false;
+    const regsSnap = await COL.rejestracje.where('id_wydarzenia','==',id).get();
     const regIds = regsSnap.docs.map(d => parseInt(d.id));
     const batch = db.batch();
     for (const rid of regIds) {
-      const opSnap = await COL.opinie.where('id_rejestracji', '==', rid).get();
+      const opSnap = await COL.opinie.where('id_rejestracji','==',rid).get();
       opSnap.docs.forEach(d => batch.delete(d.ref));
     }
     regsSnap.docs.forEach(d => batch.delete(d.ref));
@@ -238,12 +240,12 @@ const rejestracje = {
   },
   findByStudentEvent: async (id_studenta, id_wydarzenia) => {
     await ready;
-    const snap = await COL.rejestracje.where('id_studenta', '==', id_studenta).where('id_wydarzenia', '==', id_wydarzenia).limit(1).get();
+    const snap = await COL.rejestracje.where('id_studenta','==',id_studenta).where('id_wydarzenia','==',id_wydarzenia).limit(1).get();
     return snap.empty ? null : docToObj(snap.docs[0]);
   },
   countByEvent: async (id_wydarzenia) => {
     await ready;
-    const snap = await COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).get();
+    const snap = await COL.rejestracje.where('id_wydarzenia','==',id_wydarzenia).get();
     return snap.size;
   },
   create: async (id_studenta, id_wydarzenia) => {
@@ -255,9 +257,9 @@ const rejestracje = {
   removeByStudentEvent: async (id_studenta, id_wydarzenia) => {
     await ready;
     const snap = await COL.rejestracje
-      .where('id_studenta', '==', id_studenta)
-      .where('id_wydarzenia', '==', id_wydarzenia)
-      .where('status_obecnosci', '==', 'ZAPISANY')
+      .where('id_studenta','==',id_studenta)
+      .where('id_wydarzenia','==',id_wydarzenia)
+      .where('status_obecnosci','==','ZAPISANY')
       .get();
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -272,19 +274,19 @@ const rejestracje = {
   getParticipants: async (id_wydarzenia) => {
     await ready;
     const [regSnap, usSnap] = await Promise.all([
-      COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).get(),
+      COL.rejestracje.where('id_wydarzenia','==',id_wydarzenia).get(),
       COL.users.get(),
     ]);
     const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
     return regSnap.docs.map(docToObj).map(r => {
       const u = usersMap[r.id_studenta] || {};
       return { reg_id: r.id, imie_nazwisko: u.imie_nazwisko || '?', email: u.email || '?', status_obecnosci: r.status_obecnosci };
-    }).sort((a, b) => a.imie_nazwisko.localeCompare(b.imie_nazwisko));
+    }).sort((a,b) => a.imie_nazwisko.localeCompare(b.imie_nazwisko));
   },
   getPendingOpinions: async (id_studenta) => {
     await ready;
     const [regSnap, evSnap, opSnap] = await Promise.all([
-      COL.rejestracje.where('id_studenta', '==', id_studenta).where('status_obecnosci', '==', 'OBECNY').get(),
+      COL.rejestracje.where('id_studenta','==',id_studenta).where('status_obecnosci','==','OBECNY').get(),
       COL.wydarzenia.get(),
       COL.opinie.get(),
     ]);
@@ -301,17 +303,12 @@ const rejestracje = {
 const opinie = {
   findByRegId: async (id_rejestracji) => {
     await ready;
-    const snap = await COL.opinie.where('id_rejestracji', '==', id_rejestracji).limit(1).get();
+    const snap = await COL.opinie.where('id_rejestracji','==',id_rejestracji).limit(1).get();
     return snap.empty ? null : docToObj(snap.docs[0]);
-  },
-  create: async (id_rejestracji, ocena, tresc) => {
-    await ready;
-    const id = await nextId('opinie');
-    await COL.opinie.doc(String(id)).set({ id, id_rejestracji, ocena, tresc });
   },
   upsert: async (id_rejestracji, ocena, tresc) => {
     await ready;
-    const snap = await COL.opinie.where('id_rejestracji', '==', id_rejestracji).limit(1).get();
+    const snap = await COL.opinie.where('id_rejestracji','==',id_rejestracji).limit(1).get();
     if (!snap.empty) {
       await snap.docs[0].ref.update({ ocena, tresc });
     } else {
@@ -322,7 +319,7 @@ const opinie = {
   getByEvent: async (id_wydarzenia) => {
     await ready;
     const [regSnap, usSnap, opSnap] = await Promise.all([
-      COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).where('status_obecnosci', '==', 'OBECNY').get(),
+      COL.rejestracje.where('id_wydarzenia','==',id_wydarzenia).where('status_obecnosci','==','OBECNY').get(),
       COL.users.get(),
       COL.opinie.get(),
     ]);
@@ -331,8 +328,12 @@ const opinie = {
     return regSnap.docs.map(docToObj).map(r => {
       const u = usersMap[r.id_studenta] || {};
       const o = opByReg[r.id] || null;
-      return { imie_nazwisko: u.imie_nazwisko || '?', ocena: o ? o.ocena : null, tresc: o ? o.tresc : null };
-    }).filter(x => x.ocena !== null);
+      return {
+        imie_nazwisko: u.imie_nazwisko || '?',
+        ocena: o ? o.ocena : null,
+        tresc: o ? o.tresc : null,
+      };
+    });
   },
 };
 
