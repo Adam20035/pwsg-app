@@ -185,14 +185,25 @@ function renderChart(ev){
 
 async function openParticipants(eventId,eventName,punkty){
   currentEventId=eventId;currentEventPunkty=punkty||10;
-  document.getElementById('participants-title').textContent='Uczestnicy: '+eventName;
+  document.getElementById('participants-title').innerHTML='Uczestnicy: '+eventName+' <span id="participants-ts" style="font-size:.75rem;color:#a0aec0;font-weight:normal"></span>';
   document.getElementById('participants-body').innerHTML='<div class="loading">Ladowanie...</div>';
   document.getElementById('modal-participants').style.display='flex';
   await refreshParticipants(eventId);
+  // Auto-odswiezanie co 15 sekund
+  if (_participantsInterval) clearInterval(_participantsInterval);
+  _participantsInterval = setInterval(function() {
+    if (document.getElementById('modal-participants').style.display !== 'none') {
+      refreshParticipants(eventId);
+    }
+  }, 15000);
 }
+var _participantsInterval = null;
+
 async function refreshParticipants(eventId){
   var r=await fetch('/api/events/'+eventId+'/participants');var list=await r.json();
   currentParticipants=list;
+  var ts=document.getElementById('participants-ts');
+  if(ts){var now=new Date();ts.textContent='(aktualizacja: '+now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+')';}
   var body=document.getElementById('participants-body');
   if(!list.length){body.innerHTML='<p style="color:#718096;padding:20px 0">Brak zapisanych uczestnikow.</p>';return;}
   body.innerHTML=list.map(function(p){
@@ -202,7 +213,11 @@ async function refreshParticipants(eventId){
 }
 async function markPresent(regId){var r=await fetch('/api/registrations/'+regId+'/attend',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);else{var d=await r.json();showAlert(d.error,'error');}}
 async function markAbsent(regId){var r=await fetch('/api/registrations/'+regId+'/absent',{method:'POST'});if(r.ok)await refreshParticipants(currentEventId);}
-function closeParticipantsModal(){document.getElementById('modal-participants').style.display='none';loadEvents();}
+function closeParticipantsModal(){
+  document.getElementById('modal-participants').style.display='none';
+  if (_participantsInterval) { clearInterval(_participantsInterval); _participantsInterval = null; }
+  loadEvents();
+}
 
 function exportCSV(){
   if(!currentParticipants.length){showAlert('Brak uczestnikow do eksportu.','error');return;}

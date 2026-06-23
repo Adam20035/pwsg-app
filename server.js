@@ -42,6 +42,36 @@ async function sendVerificationEmail(email, token, baseUrl) {
   }
 }
 
+// ── Event notification email ─────────────────────────────────
+async function sendEventNotification(studentEmails, event) {
+  if (!studentEmails.length) return;
+  try {
+    await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Platforma Wydarzen Studenckich', email: 'fretikbloower@gmail.com' },
+        to: studentEmails.map(e => ({ email: e })),
+        subject: 'Nowe wydarzenie: ' + event.nazwa,
+        htmlContent:
+          '<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">'
+          + '<h2 style="color:#2b6cb0">Nowe wydarzenie na platformie!</h2>'
+          + '<h3>' + event.nazwa + '</h3>'
+          + '<p><strong>Data:</strong> ' + event.data_wydarzenia + '</p>'
+          + '<p><strong>Miejsce:</strong> ' + event.miejsce + '</p>'
+          + '<p><strong>Punkty za udział:</strong> ' + (event.punkty || 10) + ' pkt</p>'
+          + '<p>Zaloguj się na platformę, aby się zapisać!</p>'
+          + '</div>',
+      }),
+    });
+  } catch (e) {
+    console.error('Blad powiadomienia o wydarzeniu:', e.message);
+  }
+}
+
 // ── Middleware ────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Niezalogowany' });
@@ -117,6 +147,13 @@ app.post('/api/events', requireRole('Organizator', 'Admin'), async (req, res) =>
     return res.status(400).json({ error: 'Wypelnij wszystkie pola.' });
   const id = await wydarzenia.create({ nazwa, data_wydarzenia, miejsce, limit_miejsc, id_organizatora: req.session.userId, typ_wydarzenia, punkty });
   res.json({ id });
+  // Powiadomienia do studentow (asynchronicznie, nie blokuje odpowiedzi)
+  users.getAll().then(allUsers => {
+    const studentEmails = allUsers
+      .filter(u => u.rola === 'Student' && u.active && u.email_verified !== false)
+      .map(u => u.email);
+    sendEventNotification(studentEmails, { nazwa, data_wydarzenia, miejsce, punkty });
+  }).catch(e => console.error('Blad pobierania studentow:', e.message));
 });
 
 app.put('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res) => {
