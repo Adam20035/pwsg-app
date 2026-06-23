@@ -151,4 +151,36 @@ app.put('/api/opinions/:regId', requireRole('Student'), async (req, res) => {
   if (!ocena || !tresc) return res.status(400).json({ error: 'Wypelnij wszystkie pola.' });
   const ocenaInt = parseInt(ocena);
   if (ocenaInt < 1 || ocenaInt > 5) return res.status(400).json({ error: 'Ocena musi byc od 1 do 5.' });
-  const reg = await rejestracje
+  const reg = await rejestracje.findById(id_rejestracji);
+  if (!reg || reg.id_studenta !== req.session.userId || reg.status_obecnosci !== 'OBECNY')
+    return res.status(400).json({ error: 'Nie mozesz wystawic opinii.' });
+  await opinie.upsert(id_rejestracji, ocenaInt, tresc);
+  res.json({ ok: true });
+});
+
+app.get('/api/events/:id/opinions', requireRole('Organizator', 'Admin'), async (req, res) => {
+  res.json(await opinie.getByEvent(parseInt(req.params.id)));
+});
+
+// ── Admin ─────────────────────────────────────────────────────
+app.get('/api/admin/users', requireRole('Admin'), async (req, res) => res.json(await users.getAll()));
+
+app.post('/api/admin/users/:id/toggle', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  if (uid === req.session.userId) return res.status(400).json({ error: 'Nie mozesz zablokowac wlasnego konta.' });
+  await users.toggle(uid);
+  res.json({ ok: true });
+});
+
+app.delete('/api/admin/users/:id', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  if (uid === req.session.userId) return res.status(400).json({ error: 'Nie mozesz usunac wlasnego konta.' });
+  await users.delete(uid);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/events', requireRole('Admin'), async (req, res) => res.json(await wydarzenia.getAllAdmin()));
+
+// ── Start ─────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`PWSG dziala na http://localhost:${PORT}`));

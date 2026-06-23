@@ -1,14 +1,9 @@
-// db.js — wersja Firestore (Firebase). Eksportuje te same obiekty i funkcje co
-// oryginalny db.js na data.json, więc server.js wymaga tylko dodania async/await
-// (patrz server_firestore_patch.txt).
-
+// db.js — wersja Firestore (Firebase).
 const admin = require('firebase-admin');
 
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_KEY);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 }
 
 const db = admin.firestore();
@@ -20,7 +15,6 @@ const COL = {
   meta: db.collection('meta'),
 };
 
-// ── Licznik kolejnych ID (Firestore nie ma auto-increment) ──────────────────
 async function nextId(name) {
   const ref = COL.meta.doc('counters');
   return db.runTransaction(async (tx) => {
@@ -33,7 +27,6 @@ async function nextId(name) {
   });
 }
 
-// ── Inicjalizacja danych testowych (uruchamia się tylko raz, jeśli baza pusta) ──
 async function seedIfEmpty() {
   const snap = await COL.users.limit(1).get();
   if (!snap.empty) return;
@@ -153,4 +146,194 @@ const wydarzenia = {
     const [evSnap, regSnap, usSnap] = await Promise.all([COL.wydarzenia.get(), COL.rejestracje.get(), COL.users.get()]);
     const regs = regSnap.docs.map(docToObj);
     const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
-    return evSnap.d
+    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => {
+      const reg = regs.find(r => r.id_wydarzenia === e.id && r.id_studenta === userId) || null;
+      return {
+        ...e,
+        zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
+        organizator_nazwa: (usersMap[e.id_organizatora] || {}).imie_nazwisko || '',
+        user_registered: reg ? 1 : 0,
+        user_status: reg ? reg.status_obecnosci : null,
+        user_reg_id: reg ? reg.id : null,
+      };
+    });
+  },
+  getMine: async (orgId) => {
+    await ready;
+    const [evSnap, regSnap] = await Promise.all([
+      COL.wydarzenia.where('id_organizatora', '==', orgId).get(),
+      COL.rejestracje.get(),
+    ]);
+    const regs = regSnap.docs.map(docToObj);
+    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
+      ...e,
+      zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
+    }));
+  },
+  getAllAdmin: async () => {
+    await ready;
+    const [evSnap, regSnap, usSnap] = await Promise.all([COL.wydarzenia.get(), COL.rejestracje.get(), COL.users.get()]);
+    const regs = regSnap.docs.map(docToObj);
+    const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
+    return evSnap.docs.map(docToObj).sort((a, b) => a.data_wydarzenia.localeCompare(b.data_wydarzenia)).map(e => ({
+      ...e,
+      zapisani: regs.filter(r => r.id_wydarzenia === e.id).length,
+      organizator_nazwa: (usersMap[e.id_organizatora] || {}).imie_nazwisko || '',
+    }));
+  },
+  findById: async (id) => {
+    await ready;
+    const doc = await COL.wydarzenia.doc(String(id)).get();
+    return doc.exists ? docToObj(doc) : null;
+  },
+  create: async ({ nazwa, data_wydarzenia, miejsce, limit_miejsc, id_organizatora, typ_wydarzenia, punkty }) => {
+    await ready;
+    const id = await nextId('wydarzenia');
+    await COL.wydarzenia.doc(String(id)).set({
+      id, nazwa_wydarzenia: nazwa, data_wydarzenia, miejsce,
+      limit_miejsc: parseInt(limit_miejsc), id_organizatora,
+      typ_wydarzenia: typ_wydarzenia || 'Inne', punkty: parseInt(punkty) || 10,
+    });
+    return id;
+  },
+  update: async (id, orgId, isAdmin, data) => {
+    await ready;
+    const doc = await COL.wydarzenia.doc(String(id)).get();
+    if (!doc.exists) return false;
+    if (!isAdmin && doc.data().id_organizatora !== orgId) return false;
+    const allowed = {};
+    if (data.nazwa) allowed.nazwa_wydarzenia = data.nazwa;
+    if (data.data_wydarzenia) allowed.data_wydarzenia = data.data_wydarzenia;
+    if (data.miejsce) allowed.miejsce = data.miejsce;
+    if (data.limit_miejsc) allowed.limit_miejsc = parseInt(data.limit_miejsc);
+    if (data.typ_wydarzenia) allowed.typ_wydarzenia = data.typ_wydarzenia;
+    if (data.punkty !== undefined) allowed.punkty = parseInt(data.punkty) || 10;
+    await COL.wydarzenia.doc(String(id)).update(allowed);
+    return true;
+  },
+  delete: async (id, orgId) => {
+    await ready;
+    const doc = await COL.wydarzenia.doc(String(id)).get();
+    if (!doc.exists || doc.data().id_organizatora !== orgId) return false;
+    const regsSnap = await COL.rejestracje.where('id_wydarzenia', '==', id).get();
+    const regIds = regsSnap.docs.map(d => parseInt(d.id));
+    const batch = db.batch();
+    for (const rid of regIds) {
+      const opSnap = await COL.opinie.where('id_rejestracji', '==', rid).get();
+      opSnap.docs.forEach(d => batch.delete(d.ref));
+    }
+    regsSnap.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(COL.wydarzenia.doc(String(id)));
+    await batch.commit();
+    return true;
+  },
+};
+
+// ── rejestracje ──────────────────────────────────────────────────────────
+const rejestracje = {
+  findById: async (id) => {
+    await ready;
+    const doc = await COL.rejestracje.doc(String(id)).get();
+    return doc.exists ? docToObj(doc) : null;
+  },
+  findByStudentEvent: async (id_studenta, id_wydarzenia) => {
+    await ready;
+    const snap = await COL.rejestracje.where('id_studenta', '==', id_studenta).where('id_wydarzenia', '==', id_wydarzenia).limit(1).get();
+    return snap.empty ? null : docToObj(snap.docs[0]);
+  },
+  countByEvent: async (id_wydarzenia) => {
+    await ready;
+    const snap = await COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).get();
+    return snap.size;
+  },
+  create: async (id_studenta, id_wydarzenia) => {
+    await ready;
+    const id = await nextId('rejestracje');
+    await COL.rejestracje.doc(String(id)).set({ id, id_studenta, id_wydarzenia, status_obecnosci: 'ZAPISANY' });
+    return id;
+  },
+  removeByStudentEvent: async (id_studenta, id_wydarzenia) => {
+    await ready;
+    const snap = await COL.rejestracje
+      .where('id_studenta', '==', id_studenta)
+      .where('id_wydarzenia', '==', id_wydarzenia)
+      .where('status_obecnosci', '==', 'ZAPISANY')
+      .get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  },
+  setStatus: async (id, status) => {
+    await ready;
+    const ref = COL.rejestracje.doc(String(id));
+    const snap = await ref.get();
+    if (snap.exists) await ref.update({ status_obecnosci: status });
+  },
+  getParticipants: async (id_wydarzenia) => {
+    await ready;
+    const [regSnap, usSnap] = await Promise.all([
+      COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).get(),
+      COL.users.get(),
+    ]);
+    const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
+    return regSnap.docs.map(docToObj).map(r => {
+      const u = usersMap[r.id_studenta] || {};
+      return { reg_id: r.id, imie_nazwisko: u.imie_nazwisko || '?', email: u.email || '?', status_obecnosci: r.status_obecnosci };
+    }).sort((a, b) => a.imie_nazwisko.localeCompare(b.imie_nazwisko));
+  },
+  getPendingOpinions: async (id_studenta) => {
+    await ready;
+    const [regSnap, evSnap, opSnap] = await Promise.all([
+      COL.rejestracje.where('id_studenta', '==', id_studenta).where('status_obecnosci', '==', 'OBECNY').get(),
+      COL.wydarzenia.get(),
+      COL.opinie.get(),
+    ]);
+    const evMap = Object.fromEntries(evSnap.docs.map(d => [parseInt(d.id), d.data()]));
+    const opRegIds = new Set(opSnap.docs.map(d => d.data().id_rejestracji));
+    return regSnap.docs.map(docToObj).filter(r => !opRegIds.has(r.id)).map(r => {
+      const e = evMap[r.id_wydarzenia] || {};
+      return { reg_id: r.id, nazwa_wydarzenia: e.nazwa_wydarzenia || '?', data_wydarzenia: e.data_wydarzenia || '' };
+    });
+  },
+};
+
+// ── opinie ───────────────────────────────────────────────────────────────
+const opinie = {
+  findByRegId: async (id_rejestracji) => {
+    await ready;
+    const snap = await COL.opinie.where('id_rejestracji', '==', id_rejestracji).limit(1).get();
+    return snap.empty ? null : docToObj(snap.docs[0]);
+  },
+  create: async (id_rejestracji, ocena, tresc) => {
+    await ready;
+    const id = await nextId('opinie');
+    await COL.opinie.doc(String(id)).set({ id, id_rejestracji, ocena, tresc });
+  },
+  upsert: async (id_rejestracji, ocena, tresc) => {
+    await ready;
+    const snap = await COL.opinie.where('id_rejestracji', '==', id_rejestracji).limit(1).get();
+    if (!snap.empty) {
+      await snap.docs[0].ref.update({ ocena, tresc });
+    } else {
+      const id = await nextId('opinie');
+      await COL.opinie.doc(String(id)).set({ id, id_rejestracji, ocena, tresc });
+    }
+  },
+  getByEvent: async (id_wydarzenia) => {
+    await ready;
+    const [regSnap, usSnap, opSnap] = await Promise.all([
+      COL.rejestracje.where('id_wydarzenia', '==', id_wydarzenia).where('status_obecnosci', '==', 'OBECNY').get(),
+      COL.users.get(),
+      COL.opinie.get(),
+    ]);
+    const usersMap = Object.fromEntries(usSnap.docs.map(d => [parseInt(d.id), d.data()]));
+    const opByReg = Object.fromEntries(opSnap.docs.map(d => [d.data().id_rejestracji, d.data()]));
+    return regSnap.docs.map(docToObj).map(r => {
+      const u = usersMap[r.id_studenta] || {};
+      const o = opByReg[r.id] || null;
+      return { imie_nazwisko: u.imie_nazwisko || '?', ocena: o ? o.ocena : null, tresc: o ? o.tresc : null };
+    }).filter(x => x.ocena !== null);
+  },
+};
+
+module.exports = { users, wydarzenia, rejestracje, opinie };
