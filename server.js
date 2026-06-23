@@ -80,7 +80,7 @@ app.put('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res)
 });
 
 app.delete('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res) => {
-  const ok = await wydarzenia.delete(parseInt(req.params.id), req.session.userId);
+  const ok = await wydarzenia.delete(parseInt(req.params.id), req.session.userId, req.session.role === 'Admin');
   ok ? res.json({ ok: true }) : res.status(404).json({ error: 'Nie znaleziono.' });
 });
 
@@ -185,8 +185,19 @@ app.get('/api/events/:id/opinions', requireRole('Organizator', 'Admin'), async (
   res.json(await opinie.getByEvent(parseInt(req.params.id)));
 });
 
-// ── Admin ─────────────────────────────────────────────────────
+// ── Admin — users ─────────────────────────────────────────────
 app.get('/api/admin/users', requireRole('Admin'), async (req, res) => res.json(await users.getAll()));
+
+app.put('/api/admin/users/:id/role', requireRole('Admin'), async (req, res) => {
+  const uid = parseInt(req.params.id);
+  const { role } = req.body;
+  if (!['Student', 'Organizator', 'Admin'].includes(role))
+    return res.status(400).json({ error: 'Nieprawidlowa rola.' });
+  if (uid === req.session.userId)
+    return res.status(400).json({ error: 'Nie mozesz zmienic wlasnej roli.' });
+  await users.setRole(uid, role);
+  res.json({ ok: true });
+});
 
 app.post('/api/admin/users/:id/toggle', requireRole('Admin'), async (req, res) => {
   const uid = parseInt(req.params.id);
@@ -202,7 +213,21 @@ app.delete('/api/admin/users/:id', requireRole('Admin'), async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Admin — events ────────────────────────────────────────────
 app.get('/api/admin/events', requireRole('Admin'), async (req, res) => res.json(await wydarzenia.getAllAdmin()));
+
+app.put('/api/admin/events/:id', requireRole('Admin'), async (req, res) => {
+  const { nazwa, data_wydarzenia, miejsce, limit_miejsc } = req.body;
+  if (!nazwa || !data_wydarzenia || !miejsce || !limit_miejsc)
+    return res.status(400).json({ error: 'Wypelnij wszystkie wymagane pola.' });
+  const ok = await wydarzenia.update(parseInt(req.params.id), null, true, req.body);
+  ok ? res.json({ ok: true }) : res.status(404).json({ error: 'Nie znaleziono.' });
+});
+
+app.delete('/api/admin/events/:id', requireRole('Admin'), async (req, res) => {
+  const ok = await wydarzenia.delete(parseInt(req.params.id), null, true);
+  ok ? res.json({ ok: true }) : res.status(404).json({ error: 'Nie znaleziono.' });
+});
 
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
