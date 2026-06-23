@@ -4,10 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Logowanie – Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav><span class="brand">🎓 Platforma Wydarzen Studenckich</span></nav>
+  <nav>
+    <span class="brand">
+      <img src="logo.png" class="nav-logo" alt="WAT">
+      <span>Platforma Wydarzen Studenckich</span>
+    </span>
+  </nav>
 
   <div class="container">
     <div class="card">
@@ -34,7 +40,7 @@
         <code>anna.nowak@student.pl</code><br>
         <code>piotr.wisniewski@student.pl</code><br>
         <code>marek.zielinski@student.pl</code><br>
-        <code>student@pwsg.pl</code><br>
+        <code>student@pwsg.pl</code><br><br>
         <strong>Organizator:</strong> <code>organizator@pwsg.pl</code> / <code>org123</code><br>
         <strong>Admin:</strong> <code>admin@pwsg.pl</code> / <code>admin123</code>
       </div>
@@ -78,7 +84,6 @@
 
     document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
-    // Redirect if already logged in
     fetch('/api/me').then(r => {
       if (r.ok) return r.json();
     }).then(data => {

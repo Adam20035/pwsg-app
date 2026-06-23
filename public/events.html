@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wydarzenia – Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
   <style>
     .star-btn { background:none; border:none; font-size:1.6rem; cursor:pointer; color:#cbd5e0; padding:0 2px; transition:color .1s; }
@@ -11,12 +12,15 @@
     .opinion-stars-row { display:flex; gap:2px; margin:8px 0 16px; }
     .opinion-textarea { width:100%; box-sizing:border-box; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.95rem; resize:vertical; min-height:80px; }
     .opinion-textarea:focus { outline:none; border-color:#2b6cb0; box-shadow:0 0 0 3px rgba(43,108,176,0.1); }
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:100; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:100; padding:16px; }
   </style>
 </head>
 <body>
   <nav>
-    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <span class="brand">
+      <img src="logo.png" class="nav-logo" alt="WAT">
+      <span>Platforma Wydarzen Studenckich</span>
+    </span>
     <div class="nav-links">
       <span class="nav-user" id="nav-user"></span>
       <a href="gamification.html">🏆 Ranking</a>
@@ -34,7 +38,7 @@
 
   <!-- Opinion modal -->
   <div id="opinion-modal" class="modal-overlay">
-    <div class="card" style="width:480px;max-width:95vw;position:relative">
+    <div class="card" style="width:480px;max-width:100%;position:relative">
       <button onclick="closeOpinionModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#718096">✕</button>
       <h1 style="margin-bottom:4px">Twoja opinia</h1>
       <div id="opinion-event-label" style="color:#718096;font-size:0.9rem;margin-bottom:16px"></div>
@@ -88,6 +92,7 @@
 
       const today = new Date().toISOString().slice(0, 10);
       container.innerHTML = `
+        <div class="table-responsive">
         <table>
           <thead><tr>
             <th>Nazwa</th><th>Typ</th><th>Data</th><th>Miejsce</th>
@@ -131,7 +136,8 @@
               </tr>`;
             }).join('')}
           </tbody>
-        </table>`;
+        </table>
+        </div>`;
     }
 
     async function register(id) {
@@ -150,7 +156,6 @@
       if (res.ok) loadEvents();
     }
 
-    // ── Opinion modal ───────────────────────────────────────────
     async function openOpinion(regId, eventName) {
       currentRegId = regId;
       selectedStar = 0;
@@ -159,7 +164,6 @@
       document.getElementById('opinion-error').classList.add('hidden');
       renderStars(0);
 
-      // fetch existing opinion
       const res = await fetch(`/api/opinions/by-reg/${regId}`);
       if (res.ok) {
         const existing = await res.json();

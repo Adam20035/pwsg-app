@@ -4,11 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Admina – Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <nav>
-    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <span class="brand">
+      <img src="logo.png" class="nav-logo" alt="WAT">
+      <span>Platforma Wydarzen Studenckich</span>
+    </span>
     <div class="nav-links">
       <a href="#" onclick="showTab('users')" id="tab-users-link">👥 Uzytkownicy</a>
       <a href="#" onclick="showTab('events')" id="tab-events-link">📅 Wydarzenia</a>
@@ -53,6 +57,7 @@
 
       const roleColor = r => r === 'Admin' ? 'badge-orange' : r === 'Organizator' ? 'badge-blue' : 'badge-gray';
       el.innerHTML = `
+        <div class="table-responsive">
         <table>
           <thead><tr><th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Punkty</th><th>Akcja</th></tr></thead>
           <tbody>
@@ -71,13 +76,15 @@
               </td>
             </tr>`).join('')}
           </tbody>
-        </table>`;
+        </table>
+        </div>`;
     }
 
     async function loadAllEvents() {
       const res    = await fetch('/api/admin/events');
       const events = await res.json();
       document.getElementById('events-body').innerHTML = `
+        <div class="table-responsive">
         <table>
           <thead><tr><th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Limit</th><th>Zapisanych</th><th>Organizator</th></tr></thead>
           <tbody>
@@ -91,7 +98,8 @@
               <td>${e.organizator_nazwa}</td>
             </tr>`).join('')}
           </tbody>
-        </table>`;
+        </table>
+        </div>`;
     }
 
     async function toggleUser(id) {

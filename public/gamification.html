@@ -4,11 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranking – Platforma Wydarzen Studenckich</title>
+  <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .star { font-size: 1.4rem; color: #cbd5e0; cursor: pointer; transition: color .1s; }
+    .star.active { color: #f6ad55; }
+  </style>
 </head>
 <body>
   <nav>
-    <span class="brand">🎓 Platforma Wydarzen Studenckich</span>
+    <span class="brand">
+      <img src="logo.png" class="nav-logo" alt="WAT">
+      <span>Platforma Wydarzen Studenckich</span>
+    </span>
     <div class="nav-links">
       <span class="nav-user" id="nav-user"></span>
       <a href="events.html">Wydarzenia</a>
@@ -35,7 +43,6 @@
       <h2 class="section-title" style="border-top:none;padding-top:0;margin-top:0">Top studentow:</h2>
       <ul class="ranking-list" id="ranking-list"><li class="loading">Ladowanie...</li></ul>
 
-      <!-- Opinions section -->
       <div id="opinions-section" class="hidden">
         <div class="section-title">✍️ Oczekujace opinie</div>
         <p style="font-size:0.875rem;color:#718096;margin-bottom:14px">
@@ -82,7 +89,7 @@
       document.getElementById('opinions-list').innerHTML = list.map(o => `
         <div class="opinion-card" id="op-${o.reg_id}">
           <h4>📅 ${o.nazwa_wydarzenia} (${o.data_wydarzenia})</h4>
-          <div class="stars" id="stars-${o.reg_id}">
+          <div class="stars" id="stars-${o.reg_id}" style="display:flex;gap:4px;margin:10px 0">
             ${[1,2,3,4,5].map(n => `<span class="star" data-reg="${o.reg_id}" data-val="${n}" onclick="setStar(${o.reg_id},${n})">★</span>`).join('')}
           </div>
           <div class="form-group" style="margin-bottom:10px">
