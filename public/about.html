@@ -35,6 +35,7 @@
 <nav>
   <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
   <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
     <button class="hamburger" onclick="openDrawer()">&#9776;</button>
   </div>
 </nav>
@@ -93,6 +94,7 @@ async function init(){
     var homeUrl=u.rola==='Admin'?'/admin.html':u.rola==='Organizator'?'/organizer.html':'/events.html';
     document.getElementById('nav-home').href=homeUrl;
     document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+    document.getElementById('nav-user').textContent=u.imie_nazwisko;
     var studentLinks='<a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a><a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>';
     var orgLinks='<a href="organizer.html"><span class="dicon">&#128203;</span> Moje wydarzenia</a><a href="create-event.html"><span class="dicon">&#10133;</span> Nowe wydarzenie</a>';
     var adminLinks='<a href="admin.html"><span class="dicon">&#128101;</span> Panel admina</a>';

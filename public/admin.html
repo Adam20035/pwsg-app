@@ -67,6 +67,7 @@
 <nav>
   <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
   <div class="nav-links">
+    <span class="nav-user" id="nav-user"></span>
     <a href="#" onclick="showTab('users')">&#128101; Uzytkownicy</a>
     <a href="#" onclick="showTab('events')">&#128197; Wydarzenia</a>
     <button class="hamburger" onclick="openDrawer()">&#9776;</button>
@@ -99,6 +100,7 @@ async function init() {
   var u = (await r.json()).user;
   if (u.rola !== 'Admin') { window.location='/'; return; }
   document.getElementById('drawer-user-info').innerHTML = '<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+  document.getElementById('nav-user').textContent = u.imie_nazwisko;
   window._myId = u.id;
   loadUsers();
 }
