@@ -5,8 +5,46 @@
   <title>Panel Admina - Platforma Wydarzen Studenckich</title>
   <link rel="icon" type="image/png" href="logo.png">
   <link rel="stylesheet" href="style.css">
+  <style>
+    .role-select{padding:4px 8px;border-radius:6px;border:1px solid #cbd5e0;font-size:.82rem;cursor:pointer;}
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;}
+    .modal-overlay.open{display:flex;}
+    .modal-box{background:#fff;border-radius:12px;padding:28px;width:100%;max-width:480px;box-shadow:0 8px 30px rgba(0,0,0,.18);}
+    .modal-box h2{margin:0 0 18px;font-size:1.15rem;}
+    .modal-box .form-group{margin-bottom:14px;}
+    .modal-box label{display:block;font-size:.82rem;color:#4a5568;margin-bottom:4px;}
+    .modal-box input,.modal-box select{width:100%;padding:8px 12px;border:1px solid #cbd5e0;border-radius:6px;font-size:.9rem;box-sizing:border-box;}
+    .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+    .badge-purple{background:#e9d8fd;color:#6b46c1;}
+    .actions-wrap{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  </style>
 </head>
 <body>
+
+<!-- Edit event modal -->
+<div class="modal-overlay" id="modal-edit-event" onclick="if(event.target===this)closeEditEvent()">
+  <div class="modal-box">
+    <h2>&#9998; Edytuj wydarzenie</h2>
+    <input type="hidden" id="edit-ev-id">
+    <div class="form-group"><label>Nazwa</label><input type="text" id="edit-ev-nazwa"></div>
+    <div class="form-group"><label>Data</label><input type="date" id="edit-ev-data"></div>
+    <div class="form-group"><label>Miejsce</label><input type="text" id="edit-ev-miejsce"></div>
+    <div class="form-group"><label>Limit miejsc</label><input type="number" id="edit-ev-limit" min="1"></div>
+    <div class="form-group"><label>Typ</label>
+      <select id="edit-ev-typ">
+        <option>Wyklad</option><option>Warsztaty</option><option>Konferencja</option>
+        <option>Zawody</option><option>Kulturalne</option><option>Inne</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Punkty za obecnosc</label><input type="number" id="edit-ev-punkty" min="0" value="10"></div>
+    <div id="edit-ev-alert" class="alert hidden"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditEvent()">Anuluj</button>
+      <button class="btn btn-primary" onclick="submitEditEvent()">Zapisz</button>
+    </div>
+  </div>
+</div>
+
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-header">
@@ -26,6 +64,7 @@
   </nav>
   <div class="drawer-user" id="drawer-user-info"></div>
 </div>
+
 <nav>
   <span class="brand"><img src="logo.png" class="nav-logo" alt="WAT"><span>Platforma Wydarzen Studenckich</span></span>
   <div class="nav-links">
@@ -35,44 +74,164 @@
     <button class="hamburger" onclick="openDrawer()">&#9776;</button>
   </div>
 </nav>
+
 <div class="container wide">
   <div id="tab-users" class="card">
-    <h1>Panel Administratora - Uzytkownicy</h1>
+    <h1>Panel Administratora &ndash; Uzytkownicy</h1>
     <div id="alert-users" class="alert hidden"></div>
     <div id="users-body" class="loading">Ladowanie...</div>
   </div>
   <div id="tab-events" class="card hidden" style="margin-top:20px">
-    <h1>Panel Administratora - Wszystkie wydarzenia</h1>
+    <h1>Panel Administratora &ndash; Wszystkie wydarzenia</h1>
+    <div id="alert-events" class="alert hidden"></div>
     <div id="events-body" class="loading">Ladowanie...</div>
   </div>
 </div>
+
 <script>
+var ROLES=['Student','Organizator','Admin'];
+var ROLE_BADGE={'Admin':'badge-purple','Organizator':'badge-blue','Student':'badge-gray'};
+
 function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');document.body.style.overflow='';}
+
 async function init(){
   var r=await fetch('/api/me');if(!r.ok){window.location='/';return;}
   var u=(await r.json()).user;if(u.rola!=='Admin'){window.location='/';return;}
   document.getElementById('drawer-user-info').innerHTML='<strong>'+u.imie_nazwisko+'</strong>'+u.email;
+  window._myId=u.id;
   loadUsers();
 }
+
 function showTab(tab){
   document.getElementById('tab-users').classList.toggle('hidden',tab!=='users');
   document.getElementById('tab-events').classList.toggle('hidden',tab!=='events');
   if(tab==='events')loadAllEvents();
 }
+
+function showAlert(msg,type,target){
+  var el=document.getElementById(target||'alert-users');
+  el.textContent=msg;el.className='alert alert-'+type;
+  setTimeout(function(){el.className='alert hidden';},4000);
+}
+
+/* ── USERS ── */
 async function loadUsers(){
   var r=await fetch('/api/admin/users');var users=await r.json();
-  var rc=function(r){return r==='Admin'?'badge-orange':r==='Organizator'?'badge-blue':'badge-gray';};
-  document.getElementById('users-body').innerHTML='<div class="table-responsive"><table><thead><tr><th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Pkt</th><th>Akcja</th></tr></thead><tbody>'+users.map(function(u){return '<tr><td><strong>'+u.imie_nazwisko+'</strong></td><td>'+u.email+'</td><td><span class="badge '+rc(u.rola)+'">'+u.rola+'</span></td><td><span class="badge '+(u.active?'badge-green':'badge-gray')+'">'+(u.active?'Aktywny':'Zablokowany')+'</span></td><td>'+u.suma_punktow+'</td><td><button class="btn btn-warning btn-sm" onclick="toggleUser('+u.id+')">'+(u.active?'Zablokuj':'Odblokuj')+'</button> <button class="btn btn-danger btn-sm" onclick="deleteUser('+u.id+',\''+u.email+'\')">Usun</button></td></tr>';}).join('')+'</tbody></table></div>';
+  var rows=users.map(function(u){
+    var isSelf=(u.id===window._myId);
+    var roleSel='<select class="role-select" id="rs-'+u.id+'" '+(isSelf?'disabled':'')+'>'+
+      ROLES.map(function(ro){return '<option'+(u.rola===ro?' selected':'')+'>'+ro+'</option>';}).join('')+'</select>'+
+      '<button class="btn btn-sm btn-primary" style="padding:4px 10px;" '+(isSelf?'disabled':'')+' onclick="changeRole('+u.id+')">Zmien</button>';
+    return '<tr>'+
+      '<td><strong>'+u.imie_nazwisko+'</strong></td>'+
+      '<td>'+u.email+'</td>'+
+      '<td><span class="badge '+(ROLE_BADGE[u.rola]||'badge-gray')+'">'+u.rola+'</span></td>'+
+      '<td><span class="badge '+(u.active?'badge-green':'badge-gray')+'">'+(u.active?'Aktywny':'Zablokowany')+'</span></td>'+
+      '<td>'+u.suma_punktow+'</td>'+
+      '<td><div class="actions-wrap">'+roleSel+
+        '<button class="btn btn-warning btn-sm" '+(isSelf?'disabled':'')+' onclick="toggleUser('+u.id+')">'+(u.active?'Zablokuj':'Odblokuj')+'</button>'+
+        '<button class="btn btn-danger btn-sm" '+(isSelf?'disabled':'')+' onclick="deleteUser('+u.id+',\''+u.email+'\')">Usun</button>'+
+      '</div></td></tr>';
+  }).join('');
+  document.getElementById('users-body').innerHTML=
+    '<div class="table-responsive"><table><thead><tr>'+
+    '<th>Uzytkownik</th><th>Email</th><th>Rola</th><th>Status</th><th>Pkt</th><th>Akcje</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
+
+async function changeRole(id){
+  var sel=document.getElementById('rs-'+id);
+  if(!sel)return;
+  var role=sel.value;
+  var r=await fetch('/api/admin/users/'+id+'/role',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:role})});
+  var d=await r.json();
+  if(r.ok){showAlert('Rola zmieniona na '+role+'.','success');loadUsers();}
+  else showAlert(d.error,'error');
+}
+
+async function toggleUser(id){
+  var r=await fetch('/api/admin/users/'+id+'/toggle',{method:'POST'});
+  var d=await r.json();
+  if(r.ok){showAlert('Status zmieniony.','success');loadUsers();}
+  else showAlert(d.error,'error');
+}
+
+async function deleteUser(id,email){
+  if(!confirm('Usunac uzytkownika '+email+'?\nUsunie to rowniez wszystkie jego rejestracje i opinie.'))return;
+  var r=await fetch('/api/admin/users/'+id,{method:'DELETE'});
+  var d=await r.json();
+  if(r.ok){showAlert('Usunieto.','success');loadUsers();}
+  else showAlert(d.error,'error');
+}
+
+/* ── EVENTS ── */
 async function loadAllEvents(){
   var r=await fetch('/api/admin/events');var ev=await r.json();
-  document.getElementById('events-body').innerHTML='<div class="table-responsive"><table><thead><tr><th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Limit</th><th>Zapisanych</th><th>Organizator</th></tr></thead><tbody>'+ev.map(function(e){return '<tr><td><strong>'+e.nazwa_wydarzenia+'</strong></td><td>'+e.data_wydarzenia+'</td><td>'+e.miejsce+'</td><td>'+e.limit_miejsc+'</td><td>'+e.zapisani+'</td><td>'+e.organizator_nazwa+'</td></tr>';}).join('')+'</tbody></table></div>';
+  var rows=ev.map(function(e){
+    return '<tr>'+
+      '<td><strong>'+e.nazwa_wydarzenia+'</strong></td>'+
+      '<td>'+e.data_wydarzenia+'</td>'+
+      '<td>'+e.miejsce+'</td>'+
+      '<td>'+e.zapisani+'/'+e.limit_miejsc+'</td>'+
+      '<td>'+e.organizator_nazwa+'</td>'+
+      '<td><div class="actions-wrap">'+
+        '<button class="btn btn-warning btn-sm" onclick="openEditEvent('+e.id+','+
+          JSON.stringify(e.nazwa_wydarzenia)+','+
+          JSON.stringify(e.data_wydarzenia)+','+
+          JSON.stringify(e.miejsce)+','+
+          e.limit_miejsc+','+
+          JSON.stringify(e.typ_wydarzenia||\'Inne\')+','+
+          (e.punkty||10)+')">Edytuj</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="deleteEvent('+e.id+','+JSON.stringify(e.nazwa_wydarzenia)+')">Usun</button>'+
+      '</div></td></tr>';
+  }).join('');
+  document.getElementById('events-body').innerHTML=
+    '<div class="table-responsive"><table><thead><tr>'+
+    '<th>Nazwa</th><th>Data</th><th>Miejsce</th><th>Zapisani/Limit</th><th>Organizator</th><th>Akcje</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
-async function toggleUser(id){var r=await fetch('/api/admin/users/'+id+'/toggle',{method:'POST'});var d=await r.json();if(r.ok){showAlert('Status zmieniony.','success');loadUsers();}else showAlert(d.error,'error');}
-async function deleteUser(id,email){if(!confirm('Usunac '+email+'?'))return;var r=await fetch('/api/admin/users/'+id,{method:'DELETE'});var d=await r.json();if(r.ok){showAlert('Usunieto.','success');loadUsers();}else showAlert(d.error,'error');}
+
+function openEditEvent(id,nazwa,data,miejsce,limit,typ,punkty){
+  document.getElementById('edit-ev-id').value=id;
+  document.getElementById('edit-ev-nazwa').value=nazwa;
+  document.getElementById('edit-ev-data').value=data;
+  document.getElementById('edit-ev-miejsce').value=miejsce;
+  document.getElementById('edit-ev-limit').value=limit;
+  document.getElementById('edit-ev-typ').value=typ;
+  document.getElementById('edit-ev-punkty').value=punkty;
+  document.getElementById('edit-ev-alert').className='alert hidden';
+  document.getElementById('modal-edit-event').classList.add('open');
+}
+function closeEditEvent(){document.getElementById('modal-edit-event').classList.remove('open');}
+
+async function submitEditEvent(){
+  var id=document.getElementById('edit-ev-id').value;
+  var body={
+    nazwa:document.getElementById('edit-ev-nazwa').value,
+    data_wydarzenia:document.getElementById('edit-ev-data').value,
+    miejsce:document.getElementById('edit-ev-miejsce').value,
+    limit_miejsc:document.getElementById('edit-ev-limit').value,
+    typ_wydarzenia:document.getElementById('edit-ev-typ').value,
+    punkty:document.getElementById('edit-ev-punkty').value
+  };
+  var al=document.getElementById('edit-ev-alert');
+  var r=await fetch('/api/admin/events/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var d=await r.json();
+  if(r.ok){closeEditEvent();showAlert('Zapisano.','success','alert-events');loadAllEvents();}
+  else{al.textContent=d.error;al.className='alert alert-error';}
+}
+
+async function deleteEvent(id,nazwa){
+  if(!confirm('Usunac wydarzenie "'+nazwa+'"?\nUsunie to rowniez wszystkie rejestracje i opinie dla tego wydarzenia.'))return;
+  var r=await fetch('/api/admin/events/'+id,{method:'DELETE'});
+  var d=await r.json();
+  if(r.ok){showAlert('Usunieto wydarzenie.','success','alert-events');loadAllEvents();}
+  else showAlert(d.error,'error','alert-events');
+}
+
 async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
-function showAlert(msg,type){var el=document.getElementById('alert-users');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
+
 init();
 </script>
 </body>
