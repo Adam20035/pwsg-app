@@ -389,10 +389,11 @@ const notifications = {
     await ready;
     const snap = await COL.notifications
       .where('userId', '==', userId)
-      .orderBy('createdAt', 'desc')
-      .limit(30)
       .get();
-    return snap.docs.map(d => ({ id: parseInt(d.id), ...d.data() }));
+    return snap.docs
+      .map(d => ({ id: parseInt(d.id), ...d.data() }))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 30);
   },
   markRead: async (id) => {
     await ready;

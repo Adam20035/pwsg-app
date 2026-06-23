@@ -360,8 +360,13 @@ app.delete('/api/push/unsubscribe', requireAuth, async (req, res) => {
 
 // ── Notifications ────────────────────────────────────────────
 app.get('/api/notifications', requireAuth, async (req, res) => {
-  const list = await notifications.getForUser(req.session.userId);
-  res.json(list);
+  try {
+    const list = await notifications.getForUser(req.session.userId);
+    res.json(list);
+  } catch (e) {
+    console.error('Notifications error:', e.message);
+    res.json([]);
+  }
 });
 app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
   await notifications.markRead(parseInt(req.params.id));
