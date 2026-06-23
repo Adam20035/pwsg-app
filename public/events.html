@@ -227,5 +227,44 @@ async function logout(){await fetch('/api/logout',{method:'POST'});window.locati
 function showAlert(msg,type){var el=document.getElementById('alert');el.textContent=msg;el.className='alert alert-'+type;setTimeout(function(){el.className='alert hidden';},4000);}
 init();
 </script>
+
+<script>
+// ── Push notifications ────────────────────────────────────────
+async function registerPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const r = await fetch('/api/push/vapid-public-key');
+    const { key } = await r.json();
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key),
+    });
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub }),
+    });
+    console.log('Push: subskrypcja aktywna');
+  } catch (e) {
+    console.warn('Push: blad rejestracji', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+window.addEventListener('load', () => {
+  // Zarejestruj push po zaladowaniu (uzytkownik juz zalogowany)
+  setTimeout(registerPush, 2000);
+});
+</script>
+
 </body>
 </html>

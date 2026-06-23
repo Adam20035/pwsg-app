@@ -13,6 +13,7 @@ const COL = {
   rejestracje: db.collection('rejestracje'),
   opinie: db.collection('opinie'),
   meta: db.collection('meta'),
+  push_subs: db.collection('push_subs'),
 };
 
 async function nextId(name) {
@@ -354,4 +355,20 @@ const opinie = {
   },
 };
 
-module.exports = { users, wydarzenia, rejestracje, opinie };
+const pushSubs = {
+  save: async (userId, subscription) => {
+    await COL.push_subs.doc(String(userId)).set({ userId, subscription });
+  },
+  remove: async (id) => {
+    await COL.push_subs.doc(String(id)).delete();
+  },
+  removeByUser: async (userId) => {
+    await COL.push_subs.doc(String(userId)).delete();
+  },
+  getAll: async () => {
+    const snap = await COL.push_subs.get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+};
+
+module.exports = { users, wydarzenia, rejestracje, opinie, pushSubs };

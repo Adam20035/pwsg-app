@@ -2,7 +2,13 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const crypto = require('crypto');
-const { users, wydarzenia, rejestracje, opinie } = require('./db');
+const { users, wydarzenia, rejestracje, opinie, pushSubs } = require('./db');
+const webpush = require('web-push');
+webpush.setVapidDetails(
+  'mailto:fretikbloower@gmail.com',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 const app = express();
 app.use(express.json());
@@ -69,6 +75,23 @@ async function sendEventNotification(studentEmails, event) {
     });
   } catch (e) {
     console.error('Blad powiadomienia o wydarzeniu:', e.message);
+  }
+}
+
+// ── Push notifications ───────────────────────────────────────
+async function sendPushToAll(payload) {
+  try {
+    const subs = await pushSubs.getAll();
+    const payloadStr = JSON.stringify(payload);
+    await Promise.allSettled(
+      subs.map(s => webpush.sendNotification(s.subscription, payloadStr)
+        .catch(e => {
+          if (e.statusCode === 410) pushSubs.remove(s.id); // wygasła subskrypcja
+        })
+      )
+    );
+  } catch (e) {
+    console.error('Push error:', e.message);
   }
 }
 
@@ -154,6 +177,12 @@ app.post('/api/events', requireRole('Organizator', 'Admin'), async (req, res) =>
       .map(u => u.email);
     sendEventNotification(studentEmails, { nazwa, data_wydarzenia, miejsce, punkty });
   }).catch(e => console.error('Blad pobierania studentow:', e.message));
+  // Push notifications
+  sendPushToAll({
+    title: 'Nowe wydarzenie: ' + nazwa,
+    body: data_wydarzenia + ' | ' + miejsce + ' | +' + (punkty || 10) + ' pkt',
+    url: '/events.html',
+  });
 });
 
 app.put('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res) => {
@@ -295,6 +324,23 @@ app.delete('/api/admin/users/:id', requireRole('Admin'), async (req, res) => {
   const uid = parseInt(req.params.id);
   if (uid === req.session.userId) return res.status(400).json({ error: 'Nie mozesz usunac wlasnego konta.' });
   await users.delete(uid);
+  res.json({ ok: true });
+});
+
+// ── Push — klucz publiczny VAPID ─────────────────────────────
+app.get('/api/push/vapid-public-key', (req, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC_KEY });
+});
+
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Brak subskrypcji.' });
+  await pushSubs.save(req.session.userId, subscription);
+  res.json({ ok: true });
+});
+
+app.delete('/api/push/unsubscribe', requireAuth, async (req, res) => {
+  await pushSubs.removeByUser(req.session.userId);
   res.json({ ok: true });
 });
 
