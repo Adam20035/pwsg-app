@@ -90,8 +90,9 @@ app.post('/api/login', async (req, res) => {
     return res.status(403).json({ error: 'Twoje konto zostalo zablokowane. Skontaktuj sie z administratorem.' });
   const user = await users.findByCredentials(req.body.email, req.body.password);
   if (!user) return res.status(401).json({ error: 'Nieprawidlowy email lub haslo.' });
-  if (user.email_verified === false)
-    return res.status(403).json({ error: 'Potwierdz adres e-mail. Sprawdz skrzynke pocztowa i kliknij link weryfikacyjny.' });
+  // Weryfikacja e-mail: informacyjna (nie blokuje logowania)
+  // if (user.email_verified === false)
+  //   return res.status(403).json({ error: 'Potwierdz adres e-mail.' });
   req.session.userId = user.id;
   req.session.role   = user.rola;
   res.json({ user: { id: user.id, email: user.email, rola: user.rola, imie_nazwisko: user.imie_nazwisko, suma_punktow: user.suma_punktow } });
