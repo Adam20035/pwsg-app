@@ -14,6 +14,7 @@ const COL = {
   opinie: db.collection('opinie'),
   meta: db.collection('meta'),
   push_subs: db.collection('push_subs'),
+  notifications: db.collection('notifications'),
 };
 
 async function nextId(name) {
@@ -371,4 +372,39 @@ const pushSubs = {
   },
 };
 
-module.exports = { users, wydarzenia, rejestracje, opinie, pushSubs };
+const notifications = {
+  create: async (userIds, title, message, eventId) => {
+    await ready;
+    const batch = db.batch();
+    for (const uid of userIds) {
+      const id = await nextId('notifications');
+      batch.set(COL.notifications.doc(String(id)), {
+        id, userId: uid, title, message, eventId: eventId || null,
+        read: false, createdAt: Date.now(),
+      });
+    }
+    await batch.commit();
+  },
+  getForUser: async (userId) => {
+    await ready;
+    const snap = await COL.notifications
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(30)
+      .get();
+    return snap.docs.map(d => ({ id: parseInt(d.id), ...d.data() }));
+  },
+  markRead: async (id) => {
+    await ready;
+    await COL.notifications.doc(String(id)).update({ read: true });
+  },
+  markAllRead: async (userId) => {
+    await ready;
+    const snap = await COL.notifications.where('userId','==',userId).where('read','==',false).get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+    await batch.commit();
+  },
+};
+
+module.exports = { users, wydarzenia, rejestracje, opinie, pushSubs, notifications };

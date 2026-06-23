@@ -2,7 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const crypto = require('crypto');
-const { users, wydarzenia, rejestracje, opinie, pushSubs } = require('./db');
+const { users, wydarzenia, rejestracje, opinie, pushSubs, notifications } = require('./db');
 const webpush = require('web-push');
 webpush.setVapidDetails(
   'mailto:fretikbloower@gmail.com',
@@ -76,6 +76,19 @@ async function sendEventNotification(studentEmails, event) {
   } catch (e) {
     console.error('Blad powiadomienia o wydarzeniu:', e.message);
   }
+}
+
+// ── Notify all students (in-app + push + email) ──────────────
+async function notifyStudents(allUsers, title, message, eventId) {
+  const students = allUsers.filter(u => u.rola === 'Student' && u.active && u.email_verified !== false);
+  const studentIds = students.map(u => u.id);
+  const studentEmails = students.map(u => u.email);
+  // In-app
+  if (studentIds.length) await notifications.create(studentIds, title, message, eventId).catch(()=>{});
+  // Push
+  sendPushToAll({ title, body: message, url: '/events.html' });
+  // Email
+  sendEventNotification(studentEmails, { nazwa: title, data_wydarzenia: '', miejsce: message, punkty: null });
 }
 
 // ── Push notifications ───────────────────────────────────────
@@ -170,19 +183,11 @@ app.post('/api/events', requireRole('Organizator', 'Admin'), async (req, res) =>
     return res.status(400).json({ error: 'Wypelnij wszystkie pola.' });
   const id = await wydarzenia.create({ nazwa, data_wydarzenia, miejsce, limit_miejsc, id_organizatora: req.session.userId, typ_wydarzenia, punkty });
   res.json({ id });
-  // Powiadomienia do studentow (asynchronicznie, nie blokuje odpowiedzi)
+  // Powiadomienia (asynchronicznie)
   users.getAll().then(allUsers => {
-    const studentEmails = allUsers
-      .filter(u => u.rola === 'Student' && u.active && u.email_verified !== false)
-      .map(u => u.email);
-    sendEventNotification(studentEmails, { nazwa, data_wydarzenia, miejsce, punkty });
-  }).catch(e => console.error('Blad pobierania studentow:', e.message));
-  // Push notifications
-  sendPushToAll({
-    title: 'Nowe wydarzenie: ' + nazwa,
-    body: data_wydarzenia + ' | ' + miejsce + ' | +' + (punkty || 10) + ' pkt',
-    url: '/events.html',
-  });
+    const msg = data_wydarzenia + ' | ' + miejsce + ' | +' + (punkty || 10) + ' pkt';
+    notifyStudents(allUsers, 'Nowe wydarzenie: ' + nazwa, msg, id);
+  }).catch(e => console.error('Blad powiadomien:', e.message));
 });
 
 app.put('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res) => {
@@ -190,7 +195,16 @@ app.put('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res)
   if (!nazwa || !data_wydarzenia || !miejsce || !limit_miejsc)
     return res.status(400).json({ error: 'Wypelnij wszystkie wymagane pola.' });
   const ok = await wydarzenia.update(parseInt(req.params.id), req.session.userId, req.session.role === 'Admin', req.body);
-  ok ? res.json({ ok: true }) : res.status(404).json({ error: 'Nie znaleziono lub brak uprawnien.' });
+  if (ok) {
+    res.json({ ok: true });
+    // Powiadomienia o edycji (asynchronicznie)
+    users.getAll().then(allUsers => {
+      const msg = (req.body.data_wydarzenia || '') + ' | ' + (req.body.miejsce || '') + ' — szczegoly zaktualizowane';
+      notifyStudents(allUsers, 'Aktualizacja: ' + (req.body.nazwa || 'wydarzenie'), msg, parseInt(req.params.id));
+    }).catch(()=>{});
+  } else {
+    res.status(404).json({ error: 'Nie znaleziono lub brak uprawnien.' });
+  }
 });
 
 app.delete('/api/events/:id', requireRole('Organizator', 'Admin'), async (req, res) => {
@@ -341,6 +355,20 @@ app.post('/api/push/subscribe', requireAuth, async (req, res) => {
 
 app.delete('/api/push/unsubscribe', requireAuth, async (req, res) => {
   await pushSubs.removeByUser(req.session.userId);
+  res.json({ ok: true });
+});
+
+// ── Notifications ────────────────────────────────────────────
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  const list = await notifications.getForUser(req.session.userId);
+  res.json(list);
+});
+app.post('/api/notifications/:id/read', requireAuth, async (req, res) => {
+  await notifications.markRead(parseInt(req.params.id));
+  res.json({ ok: true });
+});
+app.post('/api/notifications/read-all', requireAuth, async (req, res) => {
+  await notifications.markAllRead(req.session.userId);
   res.json({ ok: true });
 });
 
