@@ -83,6 +83,26 @@
       <div style="margin-bottom:6px"><strong>Projekt:</strong> PWST — Platforma Wydarzen Studenckich z Gamifikacja</div>
       <div><strong>Uczelnia:</strong> Wojskowa Akademia Techniczna im. Jaroslawa Dabrowskiego, Warszawa</div>
     </div>
+
+    <div class="section-title" style="margin-top:28px">Autor projektu</div>
+    <div style="display:flex;align-items:center;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px">
+      <img src="prof.jpg" alt="Adam Nocon" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #2b6cb0;flex-shrink:0">
+      <div>
+        <div style="font-size:1.05rem;font-weight:700;color:#1a3a6b">plut. pchor. Adam NOCOŃ</div>
+        <div style="font-size:.85rem;color:#4a5568;margin-top:4px">Wojskowa Akademia Techniczna</div>
+        <div style="font-size:.85rem;color:#4a5568">Projekt PWST 2025/2026</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:28px">Autor projektu</div>
+    <div style="display:flex;align-items:center;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px">
+      <img src="prof.jpg" alt="Adam Nocon" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #2b6cb0;flex-shrink:0">
+      <div>
+        <div style="font-size:1.05rem;font-weight:700;color:#1a3a6b">plut. pchor. Adam NOCO&#323;</div>
+        <div style="font-size:.85rem;color:#4a5568;margin-top:4px">Wojskowa Akademia Techniczna</div>
+        <div style="font-size:.85rem;color:#4a5568">Projekt PWST 2025/2026</div>
+      </div>
+    </div>
   </div>
 </div>
 <script>
@@ -98,12 +118,3 @@ async function init(){
     var studentLinks='<a href="events.html"><span class="dicon">&#128197;</span> Lista wydarzen</a><a href="gamification.html"><span class="dicon">&#127942;</span> Ranking</a>';
     var orgLinks='<a href="organizer.html"><span class="dicon">&#128203;</span> Moje wydarzenia</a><a href="create-event.html"><span class="dicon">&#10133;</span> Nowe wydarzenie</a>';
     var adminLinks='<a href="admin.html"><span class="dicon">&#128101;</span> Panel admina</a>';
-    var roleLinks=u.rola==='Admin'?adminLinks:u.rola==='Organizator'?orgLinks:studentLinks;
-    document.getElementById('drawer-nav').innerHTML=roleLinks+'<div class="drawer-divider"></div><a href="account.html"><span class="dicon">&#128100;</span> Moje konto</a><a href="help.html"><span class="dicon">&#10067;</span> Pomoc</a><a href="about.html" class="active"><span class="dicon">&#8505;</span> O aplikacji</a><div class="drawer-divider"></div><a href="#" class="danger" onclick="logout()"><span class="dicon">&#128682;</span> Wyloguj</a>';
-  }catch(e){}
-}
-async function logout(){await fetch('/api/logout',{method:'POST'});window.location='/';}
-init();
-</script>
-</body>
-</html>
